@@ -1916,6 +1916,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "poise",
+ "rand",
  "sqlx",
  "tokio",
 ]

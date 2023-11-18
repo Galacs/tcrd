@@ -4,7 +4,7 @@ use crate::Error;
 
 
 pub async fn create_user(user_id: i64, conn: &Pool<Sqlite>) -> Result<(), Error> {
-    sqlx::query!("INSERT INTO balances(user_id) VALUES ($1)", user_id).execute(conn).await?;        
+    sqlx::query!("INSERT INTO balances(user_id) VALUES ($1)", user_id).execute(conn).await?;
     Ok(())
 }
 

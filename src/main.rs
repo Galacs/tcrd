@@ -1,3 +1,4 @@
+use default_packs::create_default_packs;
 use poise::serenity_prelude::{self as serenity, CreateEmbed};
 use sqlx::{Pool, Sqlite, SqlitePool};
 
@@ -7,6 +8,7 @@ mod cards;
 mod paginate_cards;
 mod commands;
 mod create_user;
+mod default_packs;
 
 pub struct Data(Pool<Sqlite>);
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -31,11 +33,11 @@ async fn main() -> Result<(), Error> {
     let database_url = "sqlite://tcrd.db";
     let conn = SqlitePool::connect(database_url).await?;
     sqlx::migrate!().run(&conn).await?;
-
+    create_default_packs(&conn).await?;
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![commands::cards::cards(), commands::balances::hourly(), commands::balances::balance(), commands::balances::daily()],
+            commands: vec![commands::cards::cards(), commands::balances::hourly(), commands::balances::balance(), commands::balances::daily(), commands::packs::pack()],
             ..Default::default()
         })
         .token(std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN"))

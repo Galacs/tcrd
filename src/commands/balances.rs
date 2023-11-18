@@ -62,7 +62,7 @@ pub async fn balance(
         return Ok(());
     };
 
-    ctx.say(format!("Your current balance is {}", row.balance)).await?;
+    ctx.say(format!("Your current balance is {} Belly", row.balance)).await?;
     Ok(())
 }
 
