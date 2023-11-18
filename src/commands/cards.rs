@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use poise::serenity_prelude as serenity;
 use futures::{Stream, StreamExt};
-use sqlx::Row;
+use sqlx::{Row, Pool, Sqlite};
 use crate::{cards::card::{Rarity, Card}, Context, Error, create_card_embed, paginate_cards};
 
 
@@ -89,6 +89,18 @@ async fn get(
     Ok(())
 }
 
+async fn give_card_to_user(conn: &Pool<Sqlite>, card_id: &String, user_id: u64) -> Result<bool, Error> {
+    let card_limit = 3;
+    let user_id = user_id as i64;
+    if let Ok(rows) = sqlx::query!("SELECT user_id FROM users_cards WHERE user_id=$1 AND card_id=$2", user_id, card_id).fetch_all(conn).await {
+        if rows.len() >= 3 {
+            return Ok(false)
+        }
+    }
+    sqlx::query!("INSERT INTO users_cards(user_id, card_id) VALUES ($1, $2)", user_id, card_id).execute(conn).await?;
+    Ok(true)
+}
+
 #[poise::command(slash_command, prefix_command)]
 pub async fn give(
     ctx: Context<'_>,
@@ -106,6 +118,12 @@ pub async fn give(
         ctx.say("Can't find that card").await?;
         return Ok(());
     };
+
+    if !give_card_to_user(conn, &row.id, user.id.0).await? {
+        ctx.say("Number of cards exceeded").await?;
+        return Ok(());
+    }
+
     let card = Card {
         id: row.id.clone(),
         rarity: Rarity::from_str(&row.rarity).unwrap(),
