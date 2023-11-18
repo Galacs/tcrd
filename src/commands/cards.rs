@@ -1,5 +1,7 @@
 use std::str::FromStr;
 use poise::serenity_prelude as serenity;
+use futures::{Stream, StreamExt};
+use sqlx::Row;
 use crate::{cards::card::{Rarity, Card}, Context, Error, create_card_embed, paginate_cards};
 
 
@@ -62,7 +64,9 @@ async fn list(
 #[poise::command(slash_command, prefix_command)]
 async fn get(
     ctx: Context<'_>,
-    #[description = "ID"] id: String,
+    #[description = "ID"]
+    #[autocomplete = "autocomplete_card_id"]
+    id: String,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
     let Ok(row) = sqlx::query!("SELECT * FROM cards WHERE id=$1", id).fetch_one(conn).await else {
@@ -88,7 +92,9 @@ async fn get(
 #[poise::command(slash_command, prefix_command)]
 pub async fn give(
     ctx: Context<'_>,
-    #[description = "ID"] id: String,
+    #[description = "ID"]
+    #[autocomplete = "autocomplete_card_id"]
+    id: String,
     #[description = "User"] user: Option<serenity::User>,
 ) -> Result<(), Error> {
     let user = match &user {
@@ -120,7 +126,9 @@ pub async fn give(
 #[poise::command(slash_command, prefix_command)]
 async fn delete(
     ctx: Context<'_>,
-    #[description = "ID"] id: String,
+    #[description = "ID"]
+    #[autocomplete = "autocomplete_card_id"]
+    id: String,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
     if let Ok(res) = sqlx::query!("DELETE FROM cards WHERE id=$1", id).execute(conn).await {
@@ -131,4 +139,13 @@ async fn delete(
     }
     ctx.reply("Card was deleted").await?;
     Ok(())
+}
+
+async fn autocomplete_card_id<'a>(
+    ctx: Context<'a>,
+    partial: &'a str,
+) -> impl Stream<Item = String> + 'a {
+    let conn = &ctx.data().0;
+    let match_str = format!("%{}%", partial);
+    sqlx::query("SELECT id from cards WHERE id LIKE ?").bind(match_str).fetch(conn).map(|s| s.unwrap().try_get("id").unwrap())
 }
