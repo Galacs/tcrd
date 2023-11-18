@@ -37,7 +37,7 @@ async fn main() -> Result<(), Error> {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![commands::cards::cards(), commands::cards::give(), commands::balances::hourly(), commands::balances::balance(), commands::balances::daily(), commands::packs::pack()],
+            commands: vec![commands::cards::cards(), commands::balances::hourly(), commands::balances::balance(), commands::balances::daily(), commands::packs::pack()],
             ..Default::default()
         })
         .token(std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN"))

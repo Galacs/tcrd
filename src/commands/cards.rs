@@ -8,7 +8,7 @@ use crate::{cards::card::{Rarity, Card}, Context, Error, create_card_embed, pagi
 #[poise::command(
     prefix_command,
     slash_command,
-    subcommands("create", "get", "list", "delete"),
+    subcommands("create", "get", "list", "delete", "give"),
     subcommand_required
 )]
 pub async fn cards(_: Context<'_>) -> Result<(), Error> {
