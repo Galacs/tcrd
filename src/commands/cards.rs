@@ -39,10 +39,11 @@ async fn list(
     ctx: Context<'_>,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
-    let Ok(rows) = sqlx::query!("SELECT * FROM cards").fetch_all(conn).await else {
+    let rows= sqlx::query!("SELECT * FROM cards").fetch_all(conn).await?;
+    if rows.is_empty() {
         ctx.say("Can't find any cards").await?;
         return Ok(());
-    };
+    }
     // ctx.say("the card was created").await?;
     let cards = rows.iter().map(|row| {
         Card {
