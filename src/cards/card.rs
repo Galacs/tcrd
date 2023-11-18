@@ -12,5 +12,10 @@ pub struct Card {
 #[derive(Clone, Debug, poise::ChoiceParameter, sqlx::Type)]
 pub enum Rarity {
     Unknown,
-    Limited,
+    Common,
+    Rare,
+    Epic,
+    Legendary,
+    Mythic,
+    Awakened,
 }
