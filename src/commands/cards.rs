@@ -1,5 +1,5 @@
 use std::str::FromStr;
-
+use poise::serenity_prelude as serenity;
 use crate::{cards::card::{Rarity, Card}, Context, Error, create_card_embed, paginate_cards};
 
 
@@ -82,6 +82,38 @@ async fn get(
             create_card_embed(e, card)
         })
     }).await?;
+    Ok(())
+}
+
+#[poise::command(slash_command, prefix_command)]
+pub async fn give(
+    ctx: Context<'_>,
+    #[description = "ID"] id: String,
+    #[description = "User"] user: Option<serenity::User>,
+) -> Result<(), Error> {
+    let user = match &user {
+        Some(u) => u,
+        None => ctx.author()
+    };
+    let conn = &ctx.data().0;
+    let Ok(row) = sqlx::query!("SELECT * FROM cards WHERE id=$1", id).fetch_one(conn).await else {
+        ctx.say("Can't find that card").await?;
+        return Ok(());
+    };
+    let card = Card {
+        id: row.id.clone(),
+        rarity: Rarity::from_str(&row.rarity).unwrap(),
+        description: row.description,
+        hp: row.hp as i32,
+        damage: row.damage as i32,
+        defense: row.defense as i32,
+    };
+    ctx.send(|b| {
+        b.embed(|e| {
+            create_card_embed(e, card)
+        })
+    }).await?;
+    ctx.say(format!("Gave {} to {}", row.id, user)).await?;
     Ok(())
 }
 
