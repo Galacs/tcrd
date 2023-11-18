@@ -1,0 +1,6 @@
+CREATE TABLE balances (
+    user_id VARCHAR PRIMARY KEY NOT NULL,
+    balance INTEGER DEFAULT 0 NOT NULL,
+    last_hourly INTEGER DEFAULT 0 NOT NULL,
+    last_daily INTEGER DEFAULT 0 NOT NULL
+)

@@ -6,6 +6,7 @@ use crate::cards::card::Card;
 mod cards;
 mod paginate_cards;
 mod commands;
+mod create_user;
 
 pub struct Data(Pool<Sqlite>);
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -34,7 +35,7 @@ async fn main() -> Result<(), Error> {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![commands::cards::cards()],
+            commands: vec![commands::cards::cards(), commands::balances::hourly(), commands::balances::balance(), commands::balances::daily()],
             ..Default::default()
         })
         .token(std::env::var("DISCORD_TOKEN").expect("missing DISCORD_TOKEN"))
