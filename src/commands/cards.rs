@@ -93,7 +93,7 @@ async fn give_card_to_user(conn: &Pool<Sqlite>, card_id: &String, user_id: u64) 
     let card_limit = 3;
     let user_id = user_id as i64;
     if let Ok(rows) = sqlx::query!("SELECT user_id FROM users_cards WHERE user_id=$1 AND card_id=$2", user_id, card_id).fetch_all(conn).await {
-        if rows.len() >= 3 {
+        if rows.len() >= card_limit {
             return Ok(false)
         }
     }
