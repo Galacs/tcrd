@@ -154,6 +154,18 @@ async fn fight(
         player_b_cards.push(id_to_fight_card(conn, id).await?);
     }
 
+    fight_two_players(&ctx, "Player AZDA".to_owned(), &mut player_a_cards, "Player B".to_owned(), &mut player_b_cards).await?;
+
+    Ok(())
+}
+
+pub async fn fight_two_players(
+    ctx: &Context<'_>,
+    player_a_name: String,
+    player_a_cards: &mut Vec<FightCard>,
+    player_b_name: String,
+    player_b_cards: & mut Vec<FightCard>
+) -> Result<(), Error> {
     let mut turn_count = 0;
     // Fight happens now
     while !(player_a_cards.is_empty() || player_b_cards.is_empty()) {
@@ -170,27 +182,27 @@ async fn fight(
         if player_a_attacks {
             // Did player B dodge ?
             if player_b_dodge {
-                ctx.say(format!("Player B's {} dodged {}'s attack with a {}% chance", card_b.id, card_a.id, card_b.defense)).await?;
+                ctx.say(format!("{player_b_name}'s {} dodged {}'s attack with a {}% chance", card_b.id, card_a.id, card_b.defense)).await?;
             } else {
                 card_b.hp -= card_a.damage;
                 if card_b.hp <= 0 {
-                    ctx.say(format!("Player A's {} dealt {} damage and killed Player's B {}", card_a.id, card_a.damage, card_b.id)).await?;
+                    ctx.say(format!("{player_a_name}'s {} dealt {} damage and killed Player's B {}", card_a.id, card_a.damage, card_b.id)).await?;
                     player_b_cards.remove(player_b_index);
                 } else {
-                    ctx.say(format!("Player A's {} dealt {} damage to Player's B {}. It now has {} hp", card_a.id, card_a.damage, card_b.id, card_b.hp)).await?;
+                    ctx.say(format!("{player_a_name}'s {} dealt {} damage to Player's B {}. It now has {} hp", card_a.id, card_a.damage, card_b.id, card_b.hp)).await?;
                 }
             }
         } else {
             // Did player A dodge ?
             if player_a_dodge {
-                ctx.say(format!("Player A's {} dodged {}'s attack with a {}% chance", card_a.id, card_b.id, card_a.defense)).await?;
+                ctx.say(format!("{player_a_name}'s {} dodged {}'s attack with a {}% chance", card_a.id, card_b.id, card_a.defense)).await?;
             } else {
                 card_a.hp -= card_b.damage;
                 if card_a.hp <= 0 {
-                    ctx.say(format!("Player B's {} dealt {} damage and killed Player's A {}", card_b.id, card_b.damage, card_a.id)).await?;
+                    ctx.say(format!("{player_b_name}'s {} dealt {} damage and killed Player's A {}", card_b.id, card_b.damage, card_a.id)).await?;
                     player_a_cards.remove(player_a_index);
                 } else {
-                    ctx.say(format!("Player B's {} dealt {} damage to Player's A {}. It now has {} hp", card_b.id, card_b.damage, card_a.id, card_a.hp)).await?;
+                    ctx.say(format!("{player_b_name}'s {} dealt {} damage to Player's A {}. It now has {} hp", card_b.id, card_b.damage, card_a.id, card_a.hp)).await?;
                 }
             }
         }
@@ -202,11 +214,10 @@ async fn fight(
     }
 
     if player_a_cards.is_empty() {
-        ctx.say(format!("Player A lost in {} turns", turn_count)).await?;
+        ctx.say(format!("{player_a_name} lost in {} turns", turn_count)).await?;
     } else {
-        ctx.say(format!("Player B lost in {} turns", turn_count)).await?;
+        ctx.say(format!("{player_b_name} lost in {} turns", turn_count)).await?;
     }
-
     Ok(())
 }
 
