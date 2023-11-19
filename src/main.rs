@@ -10,7 +10,7 @@ mod commands;
 mod create_user;
 mod default_packs;
 
-pub struct Data(Pool<Sqlite>);
+pub struct Data(Pool<Sqlite>, redis::Client);
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
@@ -36,6 +36,9 @@ async fn main() -> Result<(), Error> {
     sqlx::migrate!().run(&conn).await?;
     create_default_packs(&conn).await?;
 
+    // Redis
+    let redis_client = redis::Client::open(std::env::var("REDIS_URL").expect("Expected a redis url in the environment"))?;
+
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![commands::manage::manage(), commands::cards::cards(), commands::balances::hourly(), commands::balances::balance(), commands::balances::daily(), commands::packs::pack()],
@@ -51,7 +54,7 @@ async fn main() -> Result<(), Error> {
                 else {
                     poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 }
-                Ok(Data(conn))
+                Ok(Data(conn, redis_client))
             })
         });
 
