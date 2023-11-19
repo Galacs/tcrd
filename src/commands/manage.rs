@@ -27,7 +27,7 @@ async fn create(
     #[description = "Description"] description: String,
     #[description = "HP"] hp: i32,
     #[description = "Damage"] damage: i32,
-    #[description = "Defense"] defense: i32,
+    #[description = "Defense in %"] defense: i32,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
     if (sqlx::query!("INSERT INTO cards(id, rarity, kind, description, hp, damage, defense) VALUES ($1, $2, $3, $4, $5, $6, $7)", id, rarity, kind, description, hp, damage, defense).execute(conn).await).is_err() {
