@@ -26,6 +26,7 @@ struct FightInfo {
     author_guild_id: u64,
 }
 
+/// Chooses your card and requests to fight another player
 #[poise::command(slash_command, prefix_command)]
 async fn player(
     ctx: Context<'_>,
@@ -98,6 +99,7 @@ async fn player(
     Ok(())
 }
 
+/// Chooses your cards and accept a fight request from another player
 #[poise::command(slash_command, prefix_command)]
 async fn accept(
     ctx: Context<'_>,

@@ -4,6 +4,7 @@ use crate::{Context, Error, cards::card::{Rarity, Card, Type}, commands::manage:
 use rand::Rng;
 use sqlx::{Sqlite, Pool};
 
+/// Buys a pack for 1000 Belly
 #[poise::command(slash_command, prefix_command)]
 pub async fn pack(
     ctx: Context<'_>,

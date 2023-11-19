@@ -1,6 +1,6 @@
 use crate::{Context, Error};
 
-
+/// You can run this every hour to win 200 Belly
 #[poise::command(slash_command, prefix_command)]
 pub async fn hourly(
     ctx: Context<'_>,
@@ -26,6 +26,7 @@ pub async fn hourly(
     Ok(())
 }
 
+/// You can run this every day to win 1000 Belly
 #[poise::command(slash_command, prefix_command)]
 pub async fn daily(
     ctx: Context<'_>,
@@ -51,6 +52,7 @@ pub async fn daily(
     Ok(())
 }
 
+/// Gets your balance
 #[poise::command(slash_command, prefix_command)]
 pub async fn balance(
     ctx: Context<'_>,

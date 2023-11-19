@@ -1,6 +1,7 @@
 use crate::{Context, Error};
 
 
+/// Get the top 20 players with the most game won
 #[poise::command(slash_command, prefix_command)]
 pub async fn leaderboards(
     ctx: Context<'_>,

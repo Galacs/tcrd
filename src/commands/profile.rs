@@ -1,6 +1,7 @@
 use crate::{Context, Error};
 
 
+/// Gets your stats
 #[poise::command(slash_command, prefix_command)]
 pub async fn profile(
     ctx: Context<'_>,

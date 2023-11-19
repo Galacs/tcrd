@@ -12,7 +12,7 @@ pub fn create_user_card_embed(e: &mut CreateEmbed, card: Card, user_card: UserCa
     ), false)
 }
 
-
+/// Lists your own cards
 #[poise::command(prefix_command, slash_command)]
 pub async fn cards(ctx: Context<'_>) -> Result<(), Error> {
     let conn = &ctx.data().0;

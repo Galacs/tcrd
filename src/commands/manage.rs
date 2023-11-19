@@ -5,6 +5,7 @@ use sqlx::{Row, Pool, Sqlite};
 use crate::{cards::card::{Rarity, Card, Type, FightCard}, Context, Error, create_card_embed, paginate_cards};
 
 
+/// Admin commands used to manage cards and debug
 #[poise::command(
     prefix_command,
     slash_command,
@@ -14,6 +15,7 @@ pub async fn manage(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+/// Creates new cards
 #[allow(clippy::too_many_arguments)]
 #[poise::command(slash_command, prefix_command)]
 async fn create(
@@ -37,6 +39,7 @@ async fn create(
     Ok(())
 }
 
+/// Lists all the cards in the database
 #[poise::command(slash_command, prefix_command)]
 async fn list(
     ctx: Context<'_>,
@@ -63,6 +66,7 @@ async fn list(
     Ok(())
 }
 
+/// Gets information about a specific card
 #[poise::command(slash_command, prefix_command)]
 async fn get(
     ctx: Context<'_>,
@@ -109,6 +113,7 @@ pub async fn id_to_fight_card(conn: &Pool<Sqlite>, card_id: &String) -> Result<F
     })
 }
 
+/// Tests fighting against arbitrary cards
 #[allow(clippy::too_many_arguments)]
 #[poise::command(slash_command, prefix_command)]
 async fn fight(
@@ -170,6 +175,7 @@ pub async fn give_card_to_user(conn: &Pool<Sqlite>, card_id: &String, user_id: u
     Ok(true)
 }
 
+/// Give scard to an user or invoker
 #[poise::command(slash_command, prefix_command)]
 pub async fn give(
     ctx: Context<'_>,
@@ -211,6 +217,7 @@ pub async fn give(
     Ok(())
 }
 
+/// Delete a card from the database
 #[poise::command(slash_command, prefix_command)]
 async fn delete(
     ctx: Context<'_>,
