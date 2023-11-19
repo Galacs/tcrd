@@ -37,6 +37,10 @@ async fn player(
     #[description = "Card 4"] #[autocomplete = "autocomplete_card_id"] card_4: Option<String>,
     #[description = "Card 5"] #[autocomplete = "autocomplete_card_id"] card_5: Option<String>,
 ) -> Result<(), Error> {
+    if &player == ctx.author() {
+        ctx.say("You can't fight yourself").await?;
+        return Ok(());
+    }
     let conn = &ctx.data().0;
     // Check if cards are valid
     let card_1 = Some(card_1);
