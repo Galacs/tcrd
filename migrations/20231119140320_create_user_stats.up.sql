@@ -1,0 +1,5 @@
+CREATE TABLE user_stats (
+    user_id VARCHAR PRIMARY KEY NOT NULL UNIQUE,
+    game_won INTEGER DEFAULT 0 NOT NULL,
+    game_lost INTEGER DEFAULT 0 NOT NULL
+)
