@@ -9,6 +9,7 @@ use crate::{cards::card::{Rarity, Card, Type, FightCard}, Context, Error, create
 #[poise::command(
     prefix_command,
     slash_command,
+    owners_only,
     subcommands("create", "get", "list", "delete", "give", "fight")
 )]
 pub async fn manage(_: Context<'_>) -> Result<(), Error> {
