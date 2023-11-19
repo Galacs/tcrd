@@ -1,3 +1,5 @@
+use serde::{Serialize, Deserialize};
+
 #[derive(Debug, Clone)]
 pub struct Card {
     pub id: String,
@@ -10,7 +12,7 @@ pub struct Card {
     pub defense: i32,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FightCard {
     pub id: String,
     pub hp: i32,

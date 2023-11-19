@@ -99,6 +99,16 @@ pub async fn check_card(conn: &Pool<Sqlite>, card_id: &String) -> Result<bool, E
     Ok(false)
 }
 
+pub async fn id_to_fight_card(conn: &Pool<Sqlite>, card_id: &String) -> Result<FightCard, Error> {
+    let row = sqlx::query!("SELECT * FROM cards WHERE id=$1", card_id).fetch_one(conn).await?;
+    Ok(FightCard {
+        id: row.id,
+        hp: row.hp as i32,
+        defense: row.defense as i32,
+        damage: row.damage as i32,
+    })
+}
+
 #[allow(clippy::too_many_arguments)]
 #[poise::command(slash_command, prefix_command)]
 async fn fight(
@@ -132,16 +142,6 @@ async fn fight(
     let player_a_cards_id_iter = a.iter().flatten();
     let b = vec![id6, id7, id8, id9, id10];
     let player_b_cards_id_iter= b.iter().flatten();
-
-    async fn id_to_fight_card(conn: &Pool<Sqlite>, card_id: &String) -> Result<FightCard, Error> {
-        let row = sqlx::query!("SELECT * FROM cards WHERE id=$1", card_id).fetch_one(conn).await?;
-        Ok(FightCard {
-            id: row.id,
-            hp: row.hp as i32,
-            defense: row.defense as i32,
-            damage: row.damage as i32,
-        })
-    }
 
     let mut player_a_cards: Vec<FightCard> = Vec::new();
     for id in player_a_cards_id_iter {
@@ -229,7 +229,7 @@ async fn delete(
     Ok(())
 }
 
-async fn autocomplete_card_id<'a>(
+pub async fn autocomplete_card_id<'a>(
     ctx: Context<'a>,
     partial: &'a str,
 ) -> impl Stream<Item = String> + 'a {
