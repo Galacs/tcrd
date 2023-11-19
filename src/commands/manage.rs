@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, path::PathBuf};
 use poise::serenity_prelude as serenity;
 use futures::{Stream, StreamExt};
 use sqlx::{Row, Pool, Sqlite};
@@ -28,14 +28,23 @@ async fn create(
     #[description = "HP"] hp: i32,
     #[description = "Damage"] damage: i32,
     #[description = "Defense in %"] defense: i32,
+    #[description = "Image"] image: serenity::Attachment,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
-    if (sqlx::query!("INSERT INTO cards(id, rarity, kind, description, hp, damage, defense) VALUES ($1, $2, $3, $4, $5, $6, $7)", id, rarity, kind, description, hp, damage, defense).execute(conn).await).is_err() {
+    let filepath = PathBuf::from_str(&image.filename)?;
+    let extension = filepath.extension().ok_or("file extension error")?.to_str().ok_or("file extension error")?;
+    if (sqlx::query!("INSERT INTO cards(id, image_extension, rarity, kind, description, hp, damage, defense) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", id, extension, rarity, kind, description, hp, damage, defense).execute(conn).await).is_err() {
         ctx.say("A similar card already exists").await?;
         return Ok(());
     }
+
+    let bucket = &ctx.data().2;
+    let image_bytes = reqwest::get(image.url).await?.bytes().await?;
+    let mut cursor = std::io::Cursor::new(image_bytes);
+    bucket.put_object_stream(&mut cursor, format!("{}.{}", &id, &extension)).await?;
+
     ctx.say("the card was created").await?;
-    let card = Card { id, rarity, kind, description, hp, damage, defense };
+    let card = Card { id, extension: extension.to_owned(), rarity, kind, description, hp, damage, defense };
     ctx.send(|b| b.embed(|e| create_card_embed(e, card))).await?;
     Ok(())
 }
@@ -55,6 +64,7 @@ async fn list(
     let cards = rows.iter().map(|row| {
         Card {
             id: row.id.clone(),
+            extension: row.image_extension.clone(),
             rarity: Rarity::from_str(&row.rarity).unwrap(),
             kind: Type::from_str(&row.kind).unwrap(),
             description: row.description.clone(),
@@ -82,6 +92,7 @@ async fn get(
     };
     let card = Card {
         id: row.id,
+        extension: row.image_extension,
         rarity: Rarity::from_str(&row.rarity).unwrap(),
         kind: Type::from_str(&row.kind).unwrap(),
         description: row.description,
@@ -202,6 +213,7 @@ pub async fn give(
 
     let card = Card {
         id: row.id.clone(),
+        extension: row.image_extension,
         rarity: Rarity::from_str(&row.rarity).unwrap(),
         kind: Type::from_str(&row.kind).unwrap(),
         description: row.description,
@@ -227,6 +239,10 @@ async fn delete(
     id: String,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
+    if let Ok(row) = sqlx::query!("SELECT image_extension FROM cards WHERE id=$1", id).fetch_one(conn).await {
+        let bucket = &ctx.data().2;
+        bucket.delete_object(format!("{}.{}", id, row.image_extension)).await?;
+    }
     if let Ok(res) = sqlx::query!("DELETE FROM cards WHERE id=$1", id).execute(conn).await {
         if res.rows_affected() < 1 {
             ctx.say("Can't find card").await?;

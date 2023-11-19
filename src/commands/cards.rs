@@ -26,6 +26,7 @@ pub async fn cards(ctx: Context<'_>) -> Result<(), Error> {
     let rows: Vec<(Card, UserCard)> = rows.iter().map(|row| {
         (Card {
             id: row.id.clone(),
+            extension: row.image_extension.clone(),
             rarity: Rarity::from_str(&row.rarity).unwrap(),
             kind: Type::from_str(&row.kind).unwrap(),
             description: row.description.clone(),

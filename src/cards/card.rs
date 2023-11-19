@@ -3,6 +3,7 @@ use serde::{Serialize, Deserialize};
 #[derive(Debug, Clone)]
 pub struct Card {
     pub id: String,
+    pub extension: String,
     pub rarity: Rarity,
     pub kind: Type,
     pub description: String,

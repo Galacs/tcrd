@@ -1,6 +1,7 @@
 use default_packs::create_default_packs;
 use poise::serenity_prelude::{self as serenity, CreateEmbed};
 use sqlx::{Pool, Sqlite, SqlitePool};
+use s3::{creds::Credentials, region::Region, Bucket};
 
 use crate::cards::card::Card;
 
@@ -10,11 +11,13 @@ mod commands;
 mod create_user;
 mod default_packs;
 
-pub struct Data(Pool<Sqlite>, redis::Client);
+pub struct Data(Pool<Sqlite>, redis::Client, Bucket);
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
 pub fn create_card_embed(e: &mut CreateEmbed, card: Card) -> &mut CreateEmbed {
+    let mut image_url = std::env::var("S3_URL").unwrap();
+    image_url.push_str(&format!("/tcrd/{}.{}", card.id, card.extension));
     e.title(card.id.clone())
     .field("", &format!(
         "**ID:** {}
@@ -26,12 +29,29 @@ pub fn create_card_embed(e: &mut CreateEmbed, card: Card) -> &mut CreateEmbed {
         card.id, card.rarity, card.kind, card.hp, card.damage, card.defense
     ), false)
     .field("**Description**", card.description, false)
+    .image(image_url)
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // Loads dotenv file
     let _ = dotenv::dotenv();
+
+    // Object storage
+    let username = std::env::var("S3_USERNAME").expect("Expected an s3 username in the environment");
+    let password = std::env::var("S3_PASSWORD").expect("Expected an s3 password in the environment");
+    let creds = Credentials::new(Some(&username), Some(&password), None, None, None).unwrap();
+    let bucket = Bucket::new(
+        "tcrd",
+        Region::Custom {
+            region: "my-store".to_owned(),
+            endpoint: std::env::var("S3_URL").expect("Expected an s3 url in the environment"),
+        },
+        creds,
+    )
+    .unwrap()
+    .with_path_style();
+
     // DB
     let database_url = "sqlite://tcrd.db";
     let conn = SqlitePool::connect(database_url).await?;
@@ -56,7 +76,7 @@ async fn main() -> Result<(), Error> {
                 else {
                     poise::builtins::register_globally(ctx, &framework.options().commands).await?;
                 }
-                Ok(Data(conn, redis_client))
+                Ok(Data(conn, redis_client, bucket))
             })
         });
 

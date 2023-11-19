@@ -32,6 +32,7 @@ pub async fn pack(
         let row = sqlx::query!("SELECT * from cards WHERE rarity=$1 ORDER BY RANDOM() LIMIT 1", rarity_str).fetch_one(conn).await?;
         let card = Card {
             id: row.id,
+            extension: row.image_extension,
             rarity: Rarity::from_str(&row.rarity).unwrap(),
             kind: Type::from_str(&row.kind).unwrap(),
             description: row.description,
