@@ -153,7 +153,7 @@ async fn fight(
         player_b_cards.push(id_to_fight_card(conn, id).await?);
     }
 
-    crate::commands::fight::fight_two_players(&ctx, "Player A".to_owned(), &mut player_a_cards, "Player B".to_owned(), &mut player_b_cards).await?;
+    crate::commands::fight::fight_two_players(&ctx, 0, &mut player_a_cards, 1, &mut player_b_cards).await?;
 
     Ok(())
 }
