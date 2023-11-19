@@ -16,7 +16,7 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
 pub fn create_card_embed(e: &mut CreateEmbed, card: Card) -> &mut CreateEmbed {
-    let mut image_url = std::env::var("S3_URL").unwrap();
+    let mut image_url = std::env::var("PUBLIC_S3_URL").unwrap();
     image_url.push_str(&format!("/tcrd/{}.{}", card.id, card.extension));
     e.title(card.id.clone())
     .field("", &format!(
@@ -53,8 +53,8 @@ async fn main() -> Result<(), Error> {
     .with_path_style();
 
     // DB
-    let database_url = "sqlite://tcrd.db";
-    let conn = SqlitePool::connect(database_url).await?;
+    let database_url = std::env::var("DATABASE_URL").expect("Expected a database url in the environment");
+    let conn = SqlitePool::connect(&database_url).await?;
     sqlx::migrate!().run(&conn).await?;
     create_default_packs(&conn).await?;
 
