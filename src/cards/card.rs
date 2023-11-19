@@ -11,6 +11,14 @@ pub struct Card {
 }
 
 #[derive(Debug, Clone)]
+pub struct FightCard {
+    pub id: String,
+    pub hp: i32,
+    pub damage: i32,
+    pub defense: i32,
+}
+
+#[derive(Debug, Clone)]
 pub struct UserCard {
     pub count: i32,
 }
