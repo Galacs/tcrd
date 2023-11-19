@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{Context, Error, cards::card::{Rarity, Card}, commands::cards::give_card_to_user};
+use crate::{Context, Error, cards::card::{Rarity, Card}, commands::manage::give_card_to_user};
 use rand::Rng;
 use sqlx::{Sqlite, Pool};
 

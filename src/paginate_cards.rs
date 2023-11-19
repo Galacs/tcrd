@@ -1,10 +1,11 @@
 use poise::serenity_prelude as serenity;
 
-use crate::{cards::card::Card, create_card_embed};
+use crate::{cards::card::{Card, UserCard}, create_card_embed, commands::cards::create_user_card_embed};
 
 pub async fn paginate<U, E>(
     ctx: poise::Context<'_, U, E>,
     cards: Vec<Card>,
+    user_cards: Option<Vec<UserCard>>,
 ) -> Result<(), serenity::Error> {
     // Define some unique identifiers for the navigation buttons
     let ctx_id = ctx.id();
@@ -14,8 +15,12 @@ pub async fn paginate<U, E>(
     // Send the embed with the first page as content
     let mut current_page = 0;
     ctx.send(|b| {
-        b.embed(|b| create_card_embed(b, cards[current_page].clone()))
-            .components(|b| {
+        b.embed(|b| {
+            match &user_cards {
+                Some(user_card) => create_user_card_embed(b, cards[current_page].clone(), user_card[current_page].clone()),
+                None => create_card_embed(b, cards[current_page].clone()),
+            }
+        }).components(|b| {
                 b.create_action_row(|b| {
                     b.create_button(|b| b.custom_id(&prev_button_id).emoji('◀'))
                         .create_button(|b| b.custom_id(&next_button_id).emoji('▶'))
@@ -50,7 +55,12 @@ pub async fn paginate<U, E>(
         press
             .create_interaction_response(ctx, |b| {
                 b.kind(serenity::InteractionResponseType::UpdateMessage)
-                    .interaction_response_data(|b| b.embed(|b| create_card_embed(b, cards[current_page].clone())))
+                    .interaction_response_data(|b| b.embed(|b| {
+                        match &user_cards {
+                            Some(user_card) => create_user_card_embed(b, cards[current_page].clone(), user_card[current_page].clone()),
+                            None => create_card_embed(b, cards[current_page].clone()),
+                        }
+                    }))
             })
             .await?;
     }

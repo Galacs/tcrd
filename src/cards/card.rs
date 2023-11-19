@@ -9,6 +9,11 @@ pub struct Card {
     pub defense: i32,
 }
 
+#[derive(Debug, Clone)]
+pub struct UserCard {
+    pub count: i32,
+}
+
 #[derive(Clone, Debug, poise::ChoiceParameter, sqlx::Type)]
 pub enum Rarity {
     Unknown,
