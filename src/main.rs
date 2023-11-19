@@ -30,6 +30,8 @@ pub fn create_card_embed(e: &mut CreateEmbed, card: Card) -> &mut CreateEmbed {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    // Loads dotenv file
+    let _ = dotenv::dotenv();
     // DB
     let database_url = "sqlite://tcrd.db";
     let conn = SqlitePool::connect(database_url).await?;
