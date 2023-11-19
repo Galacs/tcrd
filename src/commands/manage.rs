@@ -154,7 +154,7 @@ async fn fight(
         player_b_cards.push(id_to_fight_card(conn, id).await?);
     }
 
-    fight_two_players(&ctx, "Player AZDA".to_owned(), &mut player_a_cards, "Player B".to_owned(), &mut player_b_cards).await?;
+    fight_two_players(&ctx, "Player A".to_owned(), &mut player_a_cards, "Player B".to_owned(), &mut player_b_cards).await?;
 
     Ok(())
 }
@@ -166,6 +166,9 @@ pub async fn fight_two_players(
     player_b_name: String,
     player_b_cards: & mut Vec<FightCard>
 ) -> Result<(), Error> {
+    // Which card attacks first ?
+    let mut player_a_attacks = rand::thread_rng().gen_bool(0.5);
+
     let mut turn_count = 0;
     // Fight happens now
     while !(player_a_cards.is_empty() || player_b_cards.is_empty()) {
@@ -175,8 +178,6 @@ pub async fn fight_two_players(
         let card_a = &mut player_a_cards[player_a_index];
         let card_b = &mut player_b_cards[player_b_index];
 
-        // Which card attacks first ?
-        let player_a_attacks = rand::thread_rng().gen_bool(0.5);
         let player_b_dodge = rand::thread_rng().gen_bool((card_b.defense as f32/100.0).into());
         let player_a_dodge = rand::thread_rng().gen_bool((card_a.defense as f32/100.0).into());
         if player_a_attacks {
@@ -206,6 +207,8 @@ pub async fn fight_two_players(
                 }
             }
         }
+
+        player_a_attacks = !player_a_attacks;
 
         turn_count += 1;
         ctx.channel_id().broadcast_typing(&ctx.serenity_context().http).await?;
