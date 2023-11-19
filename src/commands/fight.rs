@@ -82,7 +82,18 @@ async fn player(
 
     ctx.say(format!("<@{}> accepted the fight request, the match will be played in this channel", player.id)).await?;
 
-    fight_two_players(&ctx, ctx.author().id.0, &mut player_cards, player.id.0, &mut player_b_cards).await?;
+    let player_a_won = fight_two_players(&ctx, ctx.author().id.0, &mut player_cards, player.id.0, &mut player_b_cards).await?;
+
+    let user_a_id = ctx.author().id.0 as i64;
+    let user_b_id = player.id.0 as i64;
+
+    if player_a_won {
+        sqlx::query!("UPDATE user_stats SET game_won = game_won + 1 WHERE user_id=$1", user_a_id).execute(conn).await?;
+        sqlx::query!("UPDATE user_stats SET game_lost = game_lost + 1 WHERE user_id=$1", user_b_id).execute(conn).await?;
+    } else {
+        sqlx::query!("UPDATE user_stats SET game_won = game_won + 1 WHERE user_id=$1", user_b_id).execute(conn).await?;
+        sqlx::query!("UPDATE user_stats SET game_lost = game_lost + 1 WHERE user_id=$1", user_a_id).execute(conn).await?;        
+    }
 
     Ok(())
 }
@@ -169,13 +180,14 @@ pub async fn check_cards_ownership(ctx: &Context<'_>, conn: &Pool<Sqlite>, cards
     Ok(true)
 }
 
+// Returns true if the first player won
 pub async fn fight_two_players(
     ctx: &Context<'_>,
     player_a_id: u64,
     player_a_cards: &mut Vec<FightCard>,
     player_b_id: u64,
     player_b_cards: & mut Vec<FightCard>
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
     // Which card attacks first ?
     let mut player_a_attacks = rand::thread_rng().gen_bool(0.5);
 
@@ -228,8 +240,9 @@ pub async fn fight_two_players(
 
     if player_a_cards.is_empty() {
         ctx.say(format!("<@{player_a_id}> lost in {} turns", turn_count)).await?;
+        Ok(false)
     } else {
         ctx.say(format!("<@{player_b_id}> lost in {} turns", turn_count)).await?;
+        Ok(true)
     }
-    Ok(())
 }
