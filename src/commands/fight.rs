@@ -5,8 +5,7 @@ use poise::serenity_prelude::User;
 use rand::Rng;
 use redis::AsyncCommands;
 use sqlx::{Pool, Sqlite};
-use crate::{cards::card::FightCard, Context, Error, commands::manage::{check_card, id_to_fight_card}};
-use crate::commands::manage::autocomplete_card_id;
+use crate::{cards::card::FightCard, Context, Error, commands::manage::{check_card, id_to_fight_card, autocomplete_user_card_id}};
 use serde::{Serialize, Deserialize};
 
 #[poise::command(
@@ -31,11 +30,11 @@ struct FightInfo {
 async fn player(
     ctx: Context<'_>,
     #[description = "Player to fight"] player: User,
-    #[description = "Card 1"] #[autocomplete = "autocomplete_card_id"] card_1: String,
-    #[description = "Card 2"] #[autocomplete = "autocomplete_card_id"] card_2: Option<String>,
-    #[description = "Card 3"] #[autocomplete = "autocomplete_card_id"] card_3: Option<String>,
-    #[description = "Card 4"] #[autocomplete = "autocomplete_card_id"] card_4: Option<String>,
-    #[description = "Card 5"] #[autocomplete = "autocomplete_card_id"] card_5: Option<String>,
+    #[description = "Card 1"] #[autocomplete = "autocomplete_user_card_id"] card_1: String,
+    #[description = "Card 2"] #[autocomplete = "autocomplete_user_card_id"] card_2: Option<String>,
+    #[description = "Card 3"] #[autocomplete = "autocomplete_user_card_id"] card_3: Option<String>,
+    #[description = "Card 4"] #[autocomplete = "autocomplete_user_card_id"] card_4: Option<String>,
+    #[description = "Card 5"] #[autocomplete = "autocomplete_user_card_id"] card_5: Option<String>,
 ) -> Result<(), Error> {
     if &player == ctx.author() {
         ctx.say("You can't fight yourself").await?;
@@ -108,11 +107,11 @@ async fn player(
 async fn accept(
     ctx: Context<'_>,
     #[description = "Player that sent the request"] player: User,
-    #[description = "Card 1"] #[autocomplete = "autocomplete_card_id"] card_1: String,
-    #[description = "Card 2"] #[autocomplete = "autocomplete_card_id"] card_2: Option<String>,
-    #[description = "Card 3"] #[autocomplete = "autocomplete_card_id"] card_3: Option<String>,
-    #[description = "Card 4"] #[autocomplete = "autocomplete_card_id"] card_4: Option<String>,
-    #[description = "Card 5"] #[autocomplete = "autocomplete_card_id"] card_5: Option<String>,
+    #[description = "Card 1"] #[autocomplete = "autocomplete_user_card_id"] card_1: String,
+    #[description = "Card 2"] #[autocomplete = "autocomplete_user_card_id"] card_2: Option<String>,
+    #[description = "Card 3"] #[autocomplete = "autocomplete_user_card_id"] card_3: Option<String>,
+    #[description = "Card 4"] #[autocomplete = "autocomplete_user_card_id"] card_4: Option<String>,
+    #[description = "Card 5"] #[autocomplete = "autocomplete_user_card_id"] card_5: Option<String>,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
     // Check if cards are valid
