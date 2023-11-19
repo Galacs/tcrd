@@ -2,7 +2,7 @@ use std::str::FromStr;
 use poise::serenity_prelude as serenity;
 use futures::{Stream, StreamExt};
 use sqlx::{Row, Pool, Sqlite};
-use crate::{cards::card::{Rarity, Card}, Context, Error, create_card_embed, paginate_cards};
+use crate::{cards::card::{Rarity, Card, Type}, Context, Error, create_card_embed, paginate_cards};
 
 
 #[poise::command(
@@ -14,23 +14,25 @@ pub async fn manage(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 #[poise::command(slash_command, prefix_command)]
 async fn create(
     ctx: Context<'_>,
     #[description = "ID"] id: String,
     #[description = "Rarity"] rarity: Rarity,
+    #[description = "Type"] kind: Type,
     #[description = "Description"] description: String,
     #[description = "HP"] hp: i32,
     #[description = "Damage"] damage: i32,
     #[description = "Defense"] defense: i32,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
-    if (sqlx::query!("INSERT INTO cards(id, rarity, description, hp, damage, defense) VALUES ($1, $2, $3, $4, $5, $6)", id, rarity, description, hp, damage, defense).execute(conn).await).is_err() {
+    if (sqlx::query!("INSERT INTO cards(id, rarity, kind, description, hp, damage, defense) VALUES ($1, $2, $3, $4, $5, $6, $7)", id, rarity, kind, description, hp, damage, defense).execute(conn).await).is_err() {
         ctx.say("A similar card already exists").await?;
         return Ok(());
     }
     ctx.say("the card was created").await?;
-    let card = Card { id, rarity, description, hp, damage, defense };
+    let card = Card { id, rarity, kind, description, hp, damage, defense };
     ctx.send(|b| b.embed(|e| create_card_embed(e, card))).await?;
     Ok(())
 }
@@ -50,6 +52,7 @@ async fn list(
         Card {
             id: row.id.clone(),
             rarity: Rarity::from_str(&row.rarity).unwrap(),
+            kind: Type::from_str(&row.kind).unwrap(),
             description: row.description.clone(),
             hp: row.hp as i32,
             damage: row.damage as i32,
@@ -75,6 +78,7 @@ async fn get(
     let card = Card {
         id: row.id,
         rarity: Rarity::from_str(&row.rarity).unwrap(),
+        kind: Type::from_str(&row.kind).unwrap(),
         description: row.description,
         hp: row.hp as i32,
         damage: row.damage as i32,
@@ -126,6 +130,7 @@ pub async fn give(
     let card = Card {
         id: row.id.clone(),
         rarity: Rarity::from_str(&row.rarity).unwrap(),
+        kind: Type::from_str(&row.kind).unwrap(),
         description: row.description,
         hp: row.hp as i32,
         damage: row.damage as i32,

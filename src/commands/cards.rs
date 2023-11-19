@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use poise::serenity_prelude::CreateEmbed;
 
-use crate::{Context, Error, cards::card::{Card, Rarity, UserCard}, paginate_cards, create_card_embed};
+use crate::{Context, Error, cards::card::{Card, Rarity, UserCard, Type}, paginate_cards, create_card_embed};
 
 pub fn create_user_card_embed(e: &mut CreateEmbed, card: Card, user_card: UserCard) -> &mut CreateEmbed {
     create_card_embed(e, card)
@@ -27,6 +27,7 @@ pub async fn cards(ctx: Context<'_>) -> Result<(), Error> {
         (Card {
             id: row.id.clone(),
             rarity: Rarity::from_str(&row.rarity).unwrap(),
+            kind: Type::from_str(&row.kind).unwrap(),
             description: row.description.clone(),
             hp: row.hp as i32,
             damage: row.damage as i32,

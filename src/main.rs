@@ -19,10 +19,11 @@ pub fn create_card_embed(e: &mut CreateEmbed, card: Card) -> &mut CreateEmbed {
     .field("", &format!(
         "**ID:** {}
         **Rarity:** {}
+        **Type:** {}
         **HP:** {}
         **Damage:** {}
         **Defense:** {}",
-        card.id, card.rarity, card.hp, card.damage, card.defense
+        card.id, card.rarity, card.kind, card.hp, card.damage, card.defense
     ), false)
     .field("**Description**", card.description, false)
 }

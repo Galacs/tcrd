@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{Context, Error, cards::card::{Rarity, Card}, commands::manage::give_card_to_user};
+use crate::{Context, Error, cards::card::{Rarity, Card, Type}, commands::manage::give_card_to_user};
 use rand::Rng;
 use sqlx::{Sqlite, Pool};
 
@@ -32,6 +32,7 @@ pub async fn pack(
         let card = Card {
             id: row.id,
             rarity: Rarity::from_str(&row.rarity).unwrap(),
+            kind: Type::from_str(&row.kind).unwrap(),
             description: row.description,
             hp: row.hp as i32,
             damage: row.damage as i32,

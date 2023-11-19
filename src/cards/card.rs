@@ -2,6 +2,7 @@
 pub struct Card {
     pub id: String,
     pub rarity: Rarity,
+    pub kind: Type,
     pub description: String,
     // Card stats
     pub hp: i32,
@@ -23,4 +24,12 @@ pub enum Rarity {
     Legendary,
     Mythic,
     Awakened,
+}
+
+#[derive(Clone, Debug, poise::ChoiceParameter, sqlx::Type)]
+pub enum Type {
+    Unknown,
+    Attacker,
+    Tank,
+    Defender,
 }
