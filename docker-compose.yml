@@ -1,5 +1,6 @@
 services:
   tcrd:
+    restart: always
     depends_on:
       - redis
       - minio
@@ -17,10 +18,12 @@ services:
       - S3_PASSWORD=minioadmin
 
   redis:
+    restart: always
     image: "redis"
     command: redis-server --protected-mode no --bind 0.0.0.0
 
   minio:
+    restart: always
     entrypoint: sh
     command: -c 'mkdir -p /data/tcrd && minio server /data --console-address ":9001"'
     volumes:
