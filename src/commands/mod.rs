@@ -6,3 +6,4 @@ pub mod fight;
 pub mod profile;
 pub mod leaderboard;
 pub mod trade;
+pub mod help;
