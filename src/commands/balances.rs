@@ -20,8 +20,8 @@ pub async fn hourly(
         ctx.say(format!("Cooldown reached, you must wait {}s", 60*60 - duration)).await?;
     } else {
         ctx.say("You won 200").await?;
-        sqlx::query!("UPDATE balances SET balance = balance + 200").execute(conn).await?;
-        sqlx::query!("UPDATE balances SET last_hourly = unixepoch()").execute(conn).await?;
+        sqlx::query!("UPDATE balances SET balance = balance + 200 WHERE user_id = $1", user_id).execute(conn).await?;
+        sqlx::query!("UPDATE balances SET last_hourly = unixepoch() WHERE user_id = $1", user_id).execute(conn).await?;
     }
     Ok(())
 }
@@ -46,8 +46,8 @@ pub async fn daily(
         ctx.say(format!("Cooldown reached, you must wait {}s", 60*60*24 - duration)).await?;
     } else {
         ctx.say("You just won 1000").await?;
-        sqlx::query!("UPDATE balances SET balance = balance + 1000").execute(conn).await?;
-        sqlx::query!("UPDATE balances SET last_daily = unixepoch()").execute(conn).await?;
+        sqlx::query!("UPDATE balances SET balance = balance + 1000 WHERE user_id = $1", user_id).execute(conn).await?;
+        sqlx::query!("UPDATE balances SET last_daily = unixepoch() WHERE user_id = $1", user_id).execute(conn).await?;
     }
     Ok(())
 }

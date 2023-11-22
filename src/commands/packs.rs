@@ -21,7 +21,7 @@ pub async fn pack(
         return Ok(());
     }
 
-    sqlx::query!("UPDATE balances SET balance = balance - 1000").execute(conn).await?;
+    sqlx::query!("UPDATE balances SET balance = balance - 1000 WHERE user_id = $1", user_id).execute(conn).await?;
     
     let pack = sqlx::query!("SELECT common_chance, rare_chance, epic_chance, legendary_chance, mythic_chance, awakened_chance FROM packs").fetch_one(conn).await?;
     
