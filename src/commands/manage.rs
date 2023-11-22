@@ -10,7 +10,7 @@ use crate::{cards::card::{Rarity, Card, Type, FightCard}, Context, Error, create
     prefix_command,
     slash_command,
     owners_only,
-    subcommands("create", "get", "list", "delete", "give", "fight")
+    subcommands("create", "get", "list", "delete", "give", "fight", "stats")
 )]
 pub async fn manage(_: Context<'_>) -> Result<(), Error> {
     Ok(())
@@ -74,6 +74,27 @@ async fn list(
         }
     }).collect();
     paginate_cards::paginate(ctx, cards, None).await?;
+    Ok(())
+}
+
+/// Get bot stats
+#[poise::command(slash_command, prefix_command)]
+async fn stats(
+    ctx: Context<'_>,
+) -> Result<(), Error> {
+    let conn = &ctx.data().0;
+    let users = sqlx::query!("SELECT count(user_id) as count FROM user_stats").fetch_one(conn).await?;
+    let cards = sqlx::query!("SELECT count(id) as count FROM cards").fetch_one(conn).await?;
+    let player_cards = sqlx::query!("SELECT count(card_id) as count FROM users_cards").fetch_one(conn).await?;
+    let game_won = sqlx::query!("SELECT SUM(game_won) AS count FROM user_stats").fetch_one(conn).await?;
+
+    ctx.send(|b| b.embed(|e| {
+        e.title("Statistics")
+        .field("Number registed users", users.count, false)
+        .field("Number of unique cards", cards.count, false)
+        .field("Number of cards owned by players", player_cards.count, false)
+        .field("Number of fight played", game_won.count.unwrap_or(0), false)
+    })).await?;
     Ok(())
 }
 
