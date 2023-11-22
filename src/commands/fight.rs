@@ -11,7 +11,7 @@ use serde::{Serialize, Deserialize};
 #[poise::command(
     prefix_command,
     slash_command,
-    subcommands("player", "accept")
+    subcommands("player", "accept", "queue")
 )]
 pub async fn fight(_: Context<'_>) -> Result<(), Error> {
     Ok(())
@@ -23,6 +23,7 @@ struct FightInfo {
     author_name: String,
     author_channel_id: u64,
     author_guild_id: u64,
+    cards: Vec<FightCard>,
 }
 
 /// Chooses your card and requests to fight another player
@@ -73,6 +74,7 @@ async fn player(
         author_name: ctx.author().name.clone(),
         author_channel_id: ctx.channel_id().0,
         author_guild_id: ctx.guild_id().unwrap_or(poise::serenity_prelude::GuildId(0_u64)).into(),
+        cards: player_cards.clone()
     })?;
 
     redis.lpush(format!("user-fight-request-{}-{}", ctx.author().id.0, player.id.0), serialized).await?;
@@ -183,6 +185,96 @@ pub async fn check_cards_ownership(ctx: &Context<'_>, conn: &Pool<Sqlite>, cards
         }
     }
     Ok(true)
+}
+
+/// Chooses your card and joins the queue
+#[poise::command(slash_command, prefix_command)]
+async fn queue(
+    ctx: Context<'_>,
+    #[description = "Card 1"] #[autocomplete = "autocomplete_user_card_id"] card_1: String,
+    #[description = "Card 2"] #[autocomplete = "autocomplete_user_card_id"] card_2: Option<String>,
+    #[description = "Card 3"] #[autocomplete = "autocomplete_user_card_id"] card_3: Option<String>,
+    #[description = "Card 4"] #[autocomplete = "autocomplete_user_card_id"] card_4: Option<String>,
+    #[description = "Card 5"] #[autocomplete = "autocomplete_user_card_id"] card_5: Option<String>,
+) -> Result<(), Error> {
+    let conn = &ctx.data().0;
+    // Check if cards are valid
+    let card_1 = Some(card_1);
+    for card in [&card_1, &card_2, &card_3, &card_4, &card_5] {
+        let Some(id) = card else {
+            continue;
+        };
+        if !check_card(conn, id).await? {
+            ctx.say(format!("{} card doesn't exist", id)).await?;
+            return Ok(())
+        }
+    }
+
+    let a = vec![card_1, card_2, card_3, card_4, card_5];
+    let player_cards_id_iter = a.iter().flatten();
+    let mut player_cards: Vec<FightCard> = Vec::new();
+    for id in player_cards_id_iter {
+        player_cards.push(id_to_fight_card(conn, id).await?);
+    }
+
+    // Check if the player owns all the cards
+    if !check_cards_ownership(&ctx, conn, player_cards.clone()).await? {
+        return Ok(())
+    }
+
+    // Get redis connection
+    let redis_client = &ctx.data().1;
+    let mut redis = redis_client.get_async_connection().await?;
+    
+    let queue_len: usize = redis.llen("queue-fight-request").await?;
+
+    let mut player_b_cards = if queue_len < 1 {
+        let serialized = serde_json::to_string(&FightInfo {
+            author_id: ctx.author().id.0,
+            author_name: ctx.author().name.clone(),
+            author_channel_id: ctx.channel_id().0,
+            author_guild_id: ctx.guild_id().unwrap_or(poise::serenity_prelude::GuildId(0_u64)).into(),
+            cards: player_cards.clone()
+        })?;
+        redis.lpush("queue-fight-request", serialized).await?;
+        let mut pubsub = redis.into_pubsub();
+        pubsub.subscribe(format!("user-fight-response-{}", ctx.author().id.0)).await?;
+        ctx.say(format!("<@{}> joined the queue", ctx.author().id.0)).await?;
+        let msg: String = pubsub.on_message().next().await.unwrap().get_payload()?;
+        let player_b_cards: FightInfo = serde_json::from_str(&msg)?;
+        player_b_cards
+    } else {
+        let res: String = redis.rpop("queue-fight-request", None).await?;
+        let fight: FightInfo = serde_json::from_str(&res)?;
+        let serialized = serde_json::to_string(&FightInfo {
+            author_id: ctx.author().id.0,
+            author_name: ctx.author().name.clone(),
+            author_channel_id: ctx.channel_id().0,
+            author_guild_id: ctx.guild_id().unwrap_or(poise::serenity_prelude::GuildId(0_u64)).into(),
+            cards: player_cards.clone()
+        })?;
+        // Publish reponse
+        redis.publish(format!("user-fight-response-{}",  fight.author_id), serialized).await?;
+        ctx.say(format!("Found a match against <@{}>", fight.author_id)).await?;
+        return Ok(());
+    };
+
+    ctx.say(format!("A fight matching <@{}> against <@{}> will be played <#{}>", ctx.author().id.0, player_b_cards.author_id, player_b_cards.author_channel_id)).await?;
+
+    let player_a_won = fight_two_players(&ctx, ctx.author().id.0, &mut player_cards, player_b_cards.author_id, &mut player_b_cards.cards).await?;
+
+    let user_a_id = ctx.author().id.0 as i64;
+    let user_b_id = player_b_cards.author_id as i64;
+
+    if player_a_won {
+        sqlx::query!("UPDATE user_stats SET game_won = game_won + 1 WHERE user_id=$1", user_a_id).execute(conn).await?;
+        sqlx::query!("UPDATE user_stats SET game_lost = game_lost + 1 WHERE user_id=$1", user_b_id).execute(conn).await?;
+    } else {
+        sqlx::query!("UPDATE user_stats SET game_won = game_won + 1 WHERE user_id=$1", user_b_id).execute(conn).await?;
+        sqlx::query!("UPDATE user_stats SET game_lost = game_lost + 1 WHERE user_id=$1", user_a_id).execute(conn).await?;        
+    }
+
+    Ok(())
 }
 
 // Returns true if the first player won
