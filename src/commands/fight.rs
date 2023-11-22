@@ -156,6 +156,8 @@ async fn accept(
     Ok(())
 }
 
+
+
 pub async fn check_cards_ownership(ctx: &Context<'_>, conn: &Pool<Sqlite>, cards: Vec<FightCard>) -> Result<bool, Error> {
     let author_id = ctx.author().id.0 as i64;
     let mut owned_cards_rows_iter = sqlx::query!("SELECT *,count(card_id) as count from users_cards WHERE user_id=$1 GROUP BY card_id", author_id).fetch(conn);

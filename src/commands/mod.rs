@@ -5,3 +5,4 @@ pub mod cards;
 pub mod fight;
 pub mod profile;
 pub mod leaderboard;
+pub mod trade;

@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Card {
     pub id: String,
     pub extension: String,
@@ -21,12 +21,18 @@ pub struct FightCard {
     pub defense: i32,
 }
 
+impl From<Card> for FightCard {
+    fn from(card: Card) -> Self {
+        Self { id: card.id, hp: card.hp, damage: card.damage, defense: card.damage }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct UserCard {
     pub count: i32,
 }
 
-#[derive(Clone, Debug, poise::ChoiceParameter, sqlx::Type)]
+#[derive(Clone, Debug, poise::ChoiceParameter, sqlx::Type, Serialize, Deserialize,)]
 pub enum Rarity {
     Unknown,
     Common,
@@ -37,7 +43,7 @@ pub enum Rarity {
     Awakened,
 }
 
-#[derive(Clone, Debug, poise::ChoiceParameter, sqlx::Type)]
+#[derive(Clone, Debug, poise::ChoiceParameter, sqlx::Type, Serialize, Deserialize,)]
 pub enum Type {
     Unknown,
     Attacker,
