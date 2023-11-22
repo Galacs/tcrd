@@ -11,9 +11,55 @@ use crate::{cards::card::{Rarity, Card, Type, FightCard}, Context, Error, create
     slash_command,
     hide_in_help,
     owners_only,
-    subcommands("create", "get", "list", "delete", "give", "fight", "stats")
+    subcommands("create", "get", "list", "delete", "give", "fight", "stats", "balance")
 )]
 pub async fn manage(_: Context<'_>) -> Result<(), Error> {
+    Ok(())
+}
+
+#[poise::command(slash_command, prefix_command, subcommands("add", "set", "clear"))]
+pub async fn balance(_: Context<'_>) -> Result<(), Error> {
+    Ok(())
+}
+
+#[poise::command(slash_command, prefix_command)]
+async fn add(
+    ctx: Context<'_>,
+    #[description = "Amount"] amount: i32,
+    #[description = "User"] user: Option<serenity::User>,
+) -> Result<(), Error> {
+    let conn = &ctx.data().0;
+    let user = user.unwrap_or(ctx.author().clone());
+    let user_id = user.id.0 as i64;
+    sqlx::query!("UPDATE balances SET balance = balance + $2 WHERE user_id = $1", user_id, amount).execute(conn).await?;
+    ctx.say(format!("Added {} Belly to <@{}>'s balance", amount, user_id)).await?;
+    Ok(())
+}
+
+#[poise::command(slash_command, prefix_command)]
+async fn set(
+    ctx: Context<'_>,
+    #[description = "amount"] amount: i32,
+    #[description = "User"] user: Option<serenity::User>,
+) -> Result<(), Error> {
+    let conn = &ctx.data().0;
+    let user = user.unwrap_or(ctx.author().clone());
+    let user_id = user.id.0 as i64;
+    sqlx::query!("UPDATE balances SET balance = $2 WHERE user_id = $1", user_id, amount).execute(conn).await?;
+    ctx.say(format!("Set <@{}>'s balance to {} Belly", user_id, amount)).await?;
+    Ok(())
+}
+
+#[poise::command(slash_command, prefix_command)]
+async fn clear(
+    ctx: Context<'_>,
+    #[description = "User"] user: Option<serenity::User>,
+) -> Result<(), Error> {
+    let conn = &ctx.data().0;
+    let user = user.unwrap_or(ctx.author().clone());
+    let user_id = user.id.0 as i64;
+    sqlx::query!("UPDATE balances SET balance = 0 WHERE user_id = $1", user_id).execute(conn).await?;
+    ctx.say(format!("Cleared <@{}>'s balance", user_id)).await?;
     Ok(())
 }
 
