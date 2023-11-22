@@ -307,6 +307,8 @@ async fn delete(
     id: String,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
+    // Delete all cards related card ownerships
+    let nb_rows_user = sqlx::query!("DELETE FROM users_cards WHERE card_id = $1", id).execute(conn).await?;
     if let Ok(row) = sqlx::query!("SELECT image_extension FROM cards WHERE id=$1", id).fetch_one(conn).await {
         let bucket = &ctx.data().2;
         bucket.delete_object(format!("{}.{}", id, row.image_extension)).await?;
@@ -317,7 +319,7 @@ async fn delete(
             return Ok(())
         }
     }
-    ctx.reply("Card was deleted").await?;
+    ctx.reply(format!("{} cards were deleted", nb_rows_user.rows_affected())).await?;
     Ok(())
 }
 
