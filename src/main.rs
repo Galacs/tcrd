@@ -17,7 +17,7 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 
 pub fn create_card_embed(e: &mut CreateEmbed, card: Card) -> &mut CreateEmbed {
     let mut image_url = std::env::var("PUBLIC_S3_URL").unwrap();
-    image_url.push_str(&format!("/tcrd/{}.{}", card.id, card.extension));
+    image_url.push_str(&format!("/tcrd/{}.{}", urlencoding::encode(&card.id), card.extension));
     e.title(card.id.clone())
     .field("", &format!(
         "**ID:** {}
