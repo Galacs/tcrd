@@ -255,6 +255,10 @@ async fn queue(
             author_guild_id: ctx.guild_id().unwrap_or(poise::serenity_prelude::GuildId(0_u64)).into(),
             cards: player_cards.clone()
         })?;
+        if fight.author_id == ctx.author().id.0 {
+            ctx.say("You can't join the queue two times, you were removed from the queue").await?;
+            return Ok(());
+        }
         // Publish reponse
         redis.publish(format!("user-fight-response-{}",  fight.author_id), serialized).await?;
         ctx.say(format!("Found a match against <@{}>", fight.author_id)).await?;
