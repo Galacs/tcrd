@@ -1,3 +1,5 @@
+use poise::serenity_prelude::UserId;
+
 use crate::{Context, Error};
 
 
@@ -11,7 +13,12 @@ pub async fn leaderboards(
     let mut leader_str = String::new();
 
     for (id, row) in rows.iter().enumerate() {
-        leader_str.push_str(&format!("{}. <@{}>: {} games won, {} games lost\n", id + 1, row.user_id, row.game_won, row.game_lost));
+        let user = UserId(row.user_id.parse()?).to_user(ctx).await?;
+        let username = match user.discriminator {
+            0000 => user.name,
+            _ => user.tag(),
+        };
+        leader_str.push_str(&format!("{}. @{}: {} games won, {} games lost\n", id + 1, username, row.game_won, row.game_lost));
     }
 
     ctx.send(|b| b.embed(|e| {
