@@ -8,17 +8,17 @@ pub struct Card {
     pub kind: Type,
     pub description: String,
     // Card stats
-    pub hp: i32,
-    pub damage: i32,
-    pub defense: i32,
+    pub hp: i64,
+    pub damage: i64,
+    pub defense: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FightCard {
     pub id: String,
-    pub hp: i32,
-    pub damage: i32,
-    pub defense: i32,
+    pub hp: i64,
+    pub damage: i64,
+    pub defense: i64,
 }
 
 impl From<Card> for FightCard {
@@ -29,7 +29,7 @@ impl From<Card> for FightCard {
 
 #[derive(Debug, Clone)]
 pub struct UserCard {
-    pub count: i32,
+    pub count: i64,
 }
 
 #[derive(Clone, Debug, poise::ChoiceParameter, sqlx::Type, Serialize, Deserialize,)]

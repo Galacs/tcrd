@@ -5,7 +5,7 @@ use poise::serenity_prelude::User;
 use poise::serenity_prelude as serenity;
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Sqlite};
+use sqlx::{Pool, Postgres};
 
 use crate::paginate_cards;
 use crate::{Context, Error, commands::{manage::{autocomplete_user_card_id, check_card,}, fight::check_cards_ownership}, cards::card::{FightCard, Card, Rarity, Type}};
@@ -19,13 +19,13 @@ struct TradeInfo {
     cards: Vec<Card>,
 }
 
-pub async fn id_to_card(conn: &Pool<Sqlite>, card_id: &String) -> Result<Card, Error> {
+pub async fn id_to_card(conn: &Pool<Postgres>, card_id: &String) -> Result<Card, Error> {
     let row = sqlx::query!("SELECT * FROM cards WHERE id=$1", card_id).fetch_one(conn).await?;
     Ok( Card {
         id: row.id,
-        hp: row.hp as i32,
-        defense: row.defense as i32,
-        damage: row.damage as i32,
+        hp: row.hp,
+        defense: row.defense,
+        damage: row.damage,
         extension: row.image_extension,
         rarity: Rarity::from_str(&row.rarity).unwrap(),
         kind: Type::from_str(&row.kind).unwrap(),

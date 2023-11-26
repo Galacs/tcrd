@@ -1,7 +1,7 @@
 use std::{str::FromStr, path::PathBuf};
 use poise::serenity_prelude as serenity;
 use futures::{Stream, StreamExt};
-use sqlx::{Row, Pool, Sqlite};
+use sqlx::{Row, Pool, Postgres};
 use crate::{cards::card::{Rarity, Card, Type, FightCard}, Context, Error, create_card_embed, paginate_cards};
 
 
@@ -25,12 +25,12 @@ pub async fn balance(_: Context<'_>) -> Result<(), Error> {
 #[poise::command(slash_command, prefix_command)]
 async fn add(
     ctx: Context<'_>,
-    #[description = "Amount"] amount: i32,
+    #[description = "Amount"] amount: i64,
     #[description = "User"] user: Option<serenity::User>,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
     let user = user.unwrap_or(ctx.author().clone());
-    let user_id = user.id.0 as i64;
+    let user_id = user.id.0.to_string();
     sqlx::query!("UPDATE balances SET balance = balance + $2 WHERE user_id = $1", user_id, amount).execute(conn).await?;
     ctx.say(format!("Added {} Belly to <@{}>'s balance", amount, user_id)).await?;
     Ok(())
@@ -39,12 +39,12 @@ async fn add(
 #[poise::command(slash_command, prefix_command)]
 async fn set(
     ctx: Context<'_>,
-    #[description = "amount"] amount: i32,
+    #[description = "amount"] amount: i64,
     #[description = "User"] user: Option<serenity::User>,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
     let user = user.unwrap_or(ctx.author().clone());
-    let user_id = user.id.0 as i64;
+    let user_id = user.id.0.to_string();
     sqlx::query!("UPDATE balances SET balance = $2 WHERE user_id = $1", user_id, amount).execute(conn).await?;
     ctx.say(format!("Set <@{}>'s balance to {} Belly", user_id, amount)).await?;
     Ok(())
@@ -57,7 +57,7 @@ async fn clear(
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
     let user = user.unwrap_or(ctx.author().clone());
-    let user_id = user.id.0 as i64;
+    let user_id = user.id.0.to_string();
     sqlx::query!("UPDATE balances SET balance = 0 WHERE user_id = $1", user_id).execute(conn).await?;
     ctx.say(format!("Cleared <@{}>'s balance", user_id)).await?;
     Ok(())
@@ -72,15 +72,15 @@ async fn create(
     #[description = "Rarity"] rarity: Rarity,
     #[description = "Type"] kind: Type,
     #[description = "Description"] description: String,
-    #[description = "HP"] hp: i32,
-    #[description = "Damage"] damage: i32,
-    #[description = "Defense in %"] defense: i32,
+    #[description = "HP"] hp: i64,
+    #[description = "Damage"] damage: i64,
+    #[description = "Defense in %"] defense: i64,
     #[description = "Image"] image: serenity::Attachment,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
     let filepath = PathBuf::from_str(&image.filename)?;
     let extension = filepath.extension().ok_or("file extension error")?.to_str().ok_or("file extension error")?;
-    if (sqlx::query!("INSERT INTO cards(id, image_extension, rarity, kind, description, hp, damage, defense) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", id, extension, rarity, kind, description, hp, damage, defense).execute(conn).await).is_err() {
+    if (sqlx::query!("INSERT INTO cards(id, image_extension, rarity, kind, description, hp, damage, defense) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", id, extension, rarity.to_string(), kind.to_string(), description, hp, damage, defense).execute(conn).await).is_err() {
         ctx.say("A similar card already exists").await?;
         return Ok(());
     }
@@ -115,9 +115,9 @@ async fn list(
             rarity: Rarity::from_str(&row.rarity).unwrap(),
             kind: Type::from_str(&row.kind).unwrap(),
             description: row.description.clone(),
-            hp: row.hp as i32,
-            damage: row.damage as i32,
-            defense: row.defense as i32,
+            hp: row.hp,
+            damage: row.damage,
+            defense: row.defense,
         }
     }).collect();
     paginate_cards::paginate(ctx, cards, None).await?;
@@ -137,10 +137,10 @@ async fn stats(
 
     ctx.send(|b| b.embed(|e| {
         e.title("Statistics")
-        .field("Number registed users", users.count, false)
-        .field("Number of unique cards", cards.count, false)
-        .field("Number of cards owned by players", player_cards.count, false)
-        .field("Number of fight played", game_won.count.unwrap_or(0), false)
+        .field("Number registed users", users.count.unwrap(), false)
+        .field("Number of unique cards", cards.count.unwrap(), false)
+        .field("Number of cards owned by players", player_cards.count.unwrap(), false)
+        .field("Number of fight played", game_won.count.unwrap(), false)
     })).await?;
     Ok(())
 }
@@ -164,9 +164,9 @@ async fn get(
         rarity: Rarity::from_str(&row.rarity).unwrap(),
         kind: Type::from_str(&row.kind).unwrap(),
         description: row.description,
-        hp: row.hp as i32,
-        damage: row.damage as i32,
-        defense: row.defense as i32,
+        hp: row.hp,
+        damage: row.damage,
+        defense: row.defense,
     };
     ctx.send(|b| {
         b.embed(|e| {
@@ -176,20 +176,20 @@ async fn get(
     Ok(())
 }
 
-pub async fn check_card(conn: &Pool<Sqlite>, card_id: &String) -> Result<bool, Error> {
+pub async fn check_card(conn: &Pool<Postgres>, card_id: &String) -> Result<bool, Error> {
     if (sqlx::query!("SELECT * FROM cards WHERE id=$1", card_id).fetch_one(conn).await).is_ok() {
         return Ok(true);
     };
     Ok(false)
 }
 
-pub async fn id_to_fight_card(conn: &Pool<Sqlite>, card_id: &String) -> Result<FightCard, Error> {
+pub async fn id_to_fight_card(conn: &Pool<Postgres>, card_id: &String) -> Result<FightCard, Error> {
     let row = sqlx::query!("SELECT * FROM cards WHERE id=$1", card_id).fetch_one(conn).await?;
     Ok(FightCard {
         id: row.id,
-        hp: row.hp as i32,
-        defense: row.defense as i32,
-        damage: row.damage as i32,
+        hp: row.hp,
+        defense: row.defense,
+        damage: row.damage,
     })
 }
 
@@ -243,9 +243,9 @@ async fn fight(
     Ok(())
 }
 
-pub async fn give_card_to_user(conn: &Pool<Sqlite>, card_id: &String, user_id: u64) -> Result<bool, Error> {
+pub async fn give_card_to_user(conn: &Pool<Postgres>, card_id: &String, user_id: u64) -> Result<bool, Error> {
     let card_limit = 3;
-    let user_id = user_id as i64;
+    let user_id = user_id.to_string();
     if let Ok(rows) = sqlx::query!("SELECT user_id FROM users_cards WHERE user_id=$1 AND card_id=$2", user_id, card_id).fetch_all(conn).await {
         if rows.len() >= card_limit {
             return Ok(false)
@@ -285,9 +285,9 @@ pub async fn give(
         rarity: Rarity::from_str(&row.rarity).unwrap(),
         kind: Type::from_str(&row.kind).unwrap(),
         description: row.description,
-        hp: row.hp as i32,
-        damage: row.damage as i32,
-        defense: row.defense as i32,
+        hp: row.hp,
+        damage: row.damage,
+        defense: row.defense,
     };
     ctx.send(|b| {
         b.embed(|e| {

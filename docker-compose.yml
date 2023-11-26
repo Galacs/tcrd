@@ -11,7 +11,7 @@ services:
       - .env
     environment:
       - REDIS_URL=redis://redis
-      - DATABASE_URL=sqlite://db/tcrd.db?mode=rwc
+      - DATABASE_URL=postgres://tcrd:mypassword@postgres/tcrd
       - S3_URL=http://minio:9000
       - PUBLIC_S3_URL=http://localhost:9000
       - S3_USERNAME=minioadmin
@@ -36,6 +36,27 @@ services:
       - '9000:9000'
       - '9001:9001'
 
+  postgres:
+    image: postgres
+    volumes:
+      - postgres_storage:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: tcrd
+      POSTGRES_USER: tcrd
+      POSTGRES_PASSWORD: mypassword
+    ports:
+      - '5432:5432'
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: root@root.pam
+      PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+      - "5050:80"
+
 volumes:
   minio_storage: {}
   tcrd_storage: {}
+  postgres_storage: {}

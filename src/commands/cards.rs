@@ -16,8 +16,8 @@ pub fn create_user_card_embed(e: &mut CreateEmbed, card: Card, user_card: UserCa
 #[poise::command(prefix_command, slash_command)]
 pub async fn cards(ctx: Context<'_>) -> Result<(), Error> {
     let conn = &ctx.data().0;
-    let user_id = ctx.author().id.0 as i64;
-    let rows = sqlx::query!("SELECT *,count(card_id) AS count FROM users_cards INNER JOIN cards ON users_cards.card_id = cards.id WHERE user_id=$1 GROUP BY card_id", user_id).fetch_all(conn).await?;
+    let user_id = ctx.author().id.0.to_string();
+    let rows = sqlx::query!("SELECT *,count(card_id) AS count FROM users_cards INNER JOIN cards ON users_cards.card_id = cards.id WHERE user_id=$1 GROUP BY card_id, user_id, id", user_id).fetch_all(conn).await?;
     if rows.is_empty() {
         ctx.say("Can't find any cards").await?;
         return Ok(());
@@ -30,10 +30,10 @@ pub async fn cards(ctx: Context<'_>) -> Result<(), Error> {
             rarity: Rarity::from_str(&row.rarity).unwrap(),
             kind: Type::from_str(&row.kind).unwrap(),
             description: row.description.clone(),
-            hp: row.hp as i32,
-            damage: row.damage as i32,
-            defense: row.defense as i32,
-        }, UserCard { count: row.count as i32 })
+            hp: row.hp,
+            damage: row.damage,
+            defense: row.defense,
+        }, UserCard { count: row.count.ok_or("no count").unwrap() })
     }).collect();
 
     let (cards, user_cards): (Vec<_>, Vec<_>) = rows.iter().cloned().unzip();

@@ -8,7 +8,7 @@ pub async fn hourly(
     let conn = &ctx.data().0;
     let user_id = ctx.author().id.0 as i64;
     crate::create_user::exists_or_create_user(user_id, conn).await?;
-    let Ok(rows) = sqlx::query!("SELECT last_hourly FROM balances WHERE user_id = $1", user_id).fetch_one(conn).await else {
+    let Ok(rows) = sqlx::query!("SELECT last_hourly FROM balances WHERE user_id = $1", user_id.to_string()).fetch_one(conn).await else {
         return Ok(());
     };
 
@@ -20,8 +20,8 @@ pub async fn hourly(
         ctx.say(format!("Cooldown reached, you must wait {}s", 60*60 - duration)).await?;
     } else {
         ctx.say("You won 200").await?;
-        sqlx::query!("UPDATE balances SET balance = balance + 200 WHERE user_id = $1", user_id).execute(conn).await?;
-        sqlx::query!("UPDATE balances SET last_hourly = unixepoch() WHERE user_id = $1", user_id).execute(conn).await?;
+        sqlx::query!("UPDATE balances SET balance = balance + 200 WHERE user_id = $1", user_id.to_string()).execute(conn).await?;
+        sqlx::query!("UPDATE balances SET last_hourly = extract(epoch from now()) WHERE user_id = $1", user_id.to_string()).execute(conn).await?;
     }
     Ok(())
 }
@@ -34,7 +34,7 @@ pub async fn daily(
     let conn = &ctx.data().0;
     let user_id = ctx.author().id.0 as i64;
     crate::create_user::exists_or_create_user(user_id, conn).await?;
-    let Ok(rows) = sqlx::query!("SELECT last_daily FROM balances WHERE user_id = $1", user_id).fetch_one(conn).await else {
+    let Ok(rows) = sqlx::query!("SELECT last_daily FROM balances WHERE user_id = $1", user_id.to_string()).fetch_one(conn).await else {
         return Ok(());
     };
 
@@ -46,8 +46,8 @@ pub async fn daily(
         ctx.say(format!("Cooldown reached, you must wait {}s", 60*60*24 - duration)).await?;
     } else {
         ctx.say("You just won 1000").await?;
-        sqlx::query!("UPDATE balances SET balance = balance + 1000 WHERE user_id = $1", user_id).execute(conn).await?;
-        sqlx::query!("UPDATE balances SET last_daily = unixepoch() WHERE user_id = $1", user_id).execute(conn).await?;
+        sqlx::query!("UPDATE balances SET balance = balance + 1000 WHERE user_id = $1", user_id.to_string()).execute(conn).await?;
+        sqlx::query!("UPDATE balances SET last_daily = extract(epoch from now()) WHERE user_id = $1", user_id.to_string()).execute(conn).await?;
     }
     Ok(())
 }
@@ -60,7 +60,7 @@ pub async fn balance(
     let conn = &ctx.data().0;
     let user_id = ctx.author().id.0 as i64;
     crate::create_user::exists_or_create_user(user_id, conn).await?;
-    let Ok(row) = sqlx::query!("SELECT balance FROM balances WHERE user_id = $1", user_id).fetch_one(conn).await else {
+    let Ok(row) = sqlx::query!("SELECT balance FROM balances WHERE user_id = $1", user_id.to_string()).fetch_one(conn).await else {
         return Ok(());
     };
 

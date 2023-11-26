@@ -1,6 +1,6 @@
 use default_packs::create_default_packs;
 use poise::serenity_prelude::{self as serenity, CreateEmbed};
-use sqlx::{Pool, Sqlite, SqlitePool};
+use sqlx::{Pool, Postgres, PgPool};
 use s3::{creds::Credentials, region::Region, Bucket};
 
 use crate::cards::card::Card;
@@ -11,7 +11,7 @@ mod commands;
 mod create_user;
 mod default_packs;
 
-pub struct Data(Pool<Sqlite>, redis::Client, Bucket);
+pub struct Data(Pool<Postgres>, redis::Client, Bucket);
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
@@ -54,7 +54,7 @@ async fn main() -> Result<(), Error> {
 
     // DB
     let database_url = std::env::var("DATABASE_URL").expect("Expected a database url in the environment");
-    let conn = SqlitePool::connect(&database_url).await?;
+    let conn = PgPool::connect(&database_url).await?;
     sqlx::migrate!().run(&conn).await?;
     create_default_packs(&conn).await?;
 

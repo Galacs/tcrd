@@ -4,7 +4,7 @@ use futures::{TryStreamExt, StreamExt};
 use poise::serenity_prelude::User;
 use rand::Rng;
 use redis::AsyncCommands;
-use sqlx::{Pool, Sqlite};
+use sqlx::{Pool, Postgres};
 use crate::{cards::card::FightCard, Context, Error, commands::manage::{check_card, id_to_fight_card, autocomplete_user_card_id}};
 use serde::{Serialize, Deserialize};
 
@@ -90,8 +90,8 @@ async fn player(
 
     let player_a_won = fight_two_players(&ctx, ctx.author().id.0, &mut player_cards, player.id.0, &mut player_b_cards).await?;
 
-    let user_a_id = ctx.author().id.0 as i64;
-    let user_b_id = player.id.0 as i64;
+    let user_a_id = ctx.author().id.0.to_string();
+    let user_b_id = player.id.0.to_string();
 
     if player_a_won {
         sqlx::query!("UPDATE user_stats SET game_won = game_won + 1 WHERE user_id=$1", user_a_id).execute(conn).await?;
@@ -158,13 +158,13 @@ async fn accept(
 
 
 
-pub async fn check_cards_ownership(ctx: &Context<'_>, conn: &Pool<Sqlite>, cards: Vec<FightCard>) -> Result<bool, Error> {
-    let author_id = ctx.author().id.0 as i64;
-    let mut owned_cards_rows_iter = sqlx::query!("SELECT *,count(card_id) as count from users_cards WHERE user_id=$1 GROUP BY card_id", author_id).fetch(conn);
+pub async fn check_cards_ownership(ctx: &Context<'_>, conn: &Pool<Postgres>, cards: Vec<FightCard>) -> Result<bool, Error> {
+    let author_id = ctx.author().id.0.to_string();
+    let mut owned_cards_rows_iter = sqlx::query!("SELECT *,count(card_id) as count from users_cards WHERE user_id=$1 GROUP BY card_id, user_id", author_id).fetch(conn);
 
     let mut actual_map: HashMap<String, u32> = HashMap::new();
     while let Some(card) = owned_cards_rows_iter.try_next().await? {
-        actual_map.insert(card.card_id, card.count as u32);
+        actual_map.insert(card.card_id, card.count.ok_or("no count")? as u32);
     }
 
     let mut request_map: HashMap<String, u32> = HashMap::new();
@@ -269,8 +269,8 @@ async fn queue(
 
     let player_a_won = fight_two_players(&ctx, ctx.author().id.0, &mut player_cards, player_b_cards.author_id, &mut player_b_cards.cards).await?;
 
-    let user_a_id = ctx.author().id.0 as i64;
-    let user_b_id = player_b_cards.author_id as i64;
+    let user_a_id = ctx.author().id.0.to_string();
+    let user_b_id = player_b_cards.author_id.to_string();
 
     if player_a_won {
         sqlx::query!("UPDATE user_stats SET game_won = game_won + 1 WHERE user_id=$1", user_a_id).execute(conn).await?;

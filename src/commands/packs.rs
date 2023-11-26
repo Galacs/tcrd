@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::{Context, Error, cards::card::{Rarity, Card, Type}, commands::manage::give_card_to_user};
 use rand::Rng;
-use sqlx::{Sqlite, Pool};
+use sqlx::{Postgres, Pool};
 
 /// Buys a pack for 1000 Belly
 #[poise::command(slash_command, prefix_command)]
@@ -12,6 +12,7 @@ pub async fn pack(
     let conn = &ctx.data().0;
     let user_id = ctx.author().id.0 as i64;
     crate::create_user::exists_or_create_user(user_id, conn).await?;
+    let user_id = user_id.to_string();
     let Ok(row) = sqlx::query!("SELECT balance FROM balances WHERE user_id = $1", user_id).fetch_one(conn).await else {
         return Ok(());
     };
@@ -27,7 +28,7 @@ pub async fn pack(
     
     let number = rand::thread_rng().gen_range(0..1000);
 
-    async fn get_random_card(conn: &Pool<Sqlite>, rarity: Rarity) -> Result<Card, Error> {
+    async fn get_random_card(conn: &Pool<Postgres>, rarity: Rarity) -> Result<Card, Error> {
         let rarity_str = rarity.to_string();
         let row = sqlx::query!("SELECT * from cards WHERE rarity=$1 ORDER BY RANDOM() LIMIT 1", rarity_str).fetch_one(conn).await?;
         let card = Card {
@@ -36,9 +37,9 @@ pub async fn pack(
             rarity: Rarity::from_str(&row.rarity).unwrap(),
             kind: Type::from_str(&row.kind).unwrap(),
             description: row.description,
-            hp: row.hp as i32,
-            damage: row.damage as i32,
-            defense: row.defense as i32,
+            hp: row.hp,
+            damage: row.damage,
+            defense: row.defense,
         };
         Ok(card)
     }
