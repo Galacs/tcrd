@@ -98,7 +98,7 @@ async fn create(
 
 /// Lists all the cards in the database
 #[poise::command(slash_command, prefix_command)]
-async fn list(
+pub async fn list(
     ctx: Context<'_>,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
