@@ -13,13 +13,15 @@ pub async fn paginate<U, E>(
     let next_button_id = format!("{}next", ctx_id);
     let close_button_id = format!("{}close", ctx_id);
 
+    let footer_count = format!("1/{}", cards.len());
+
     // Send the embed with the first page as content
     let mut current_page = 0;
     ctx.send(|b| {
         b.embed(|b| {
             match &user_cards {
-                Some(user_card) => create_user_card_embed(b, cards[current_page].clone(), user_card[current_page].clone()),
-                None => create_card_embed(b, cards[current_page].clone()),
+                Some(user_card) => create_user_card_embed(b, cards[current_page].clone(), user_card[current_page].clone()).footer(|f| f.text(footer_count)),
+                None => create_card_embed(b, cards[current_page].clone()).footer(|f| f.text(footer_count)),
             }
         }).components(|b| {
                 b.create_action_row(|b| {
@@ -56,14 +58,16 @@ pub async fn paginate<U, E>(
             continue;
         }
 
+        let footer_count = format!("{}/{}", current_page + 1, cards.len());
+
         // Update the message with the new page contents
         press
             .create_interaction_response(ctx, |b| {
                 b.kind(serenity::InteractionResponseType::UpdateMessage)
                     .interaction_response_data(|b| b.embed(|b| {
                         match &user_cards {
-                            Some(user_card) => create_user_card_embed(b, cards[current_page].clone(), user_card[current_page].clone()),
-                            None => create_card_embed(b, cards[current_page].clone()),
+                            Some(user_card) => create_user_card_embed(b, cards[current_page].clone(), user_card[current_page].clone()).footer(|f| f.text(footer_count)),
+                            None => create_card_embed(b, cards[current_page].clone()).footer(|f| f.text(footer_count)),
                         }
                     }))
             })
