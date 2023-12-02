@@ -1,4 +1,5 @@
 use crate::{Context, Error};
+use std::time::Duration;
 
 /// You can run this every hour to win 200 Belly
 #[poise::command(slash_command, prefix_command)]
@@ -17,7 +18,8 @@ pub async fn hourly(
     let duration = chrono::offset::Utc::now().signed_duration_since(last_hourly).num_seconds();
 
     if duration < 60*60 {
-        ctx.say(format!("Cooldown reached, you must wait {}s", 60*60 - duration)).await?;
+        let pretty_duration = humantime::format_duration(Duration::from_secs(60*60 - duration as u64));
+        ctx.say(format!("Cooldown reached, you must wait {}", pretty_duration)).await?;
     } else {
         ctx.say("You won 200").await?;
         sqlx::query!("UPDATE balances SET balance = balance + 200 WHERE user_id = $1", user_id.to_string()).execute(conn).await?;
@@ -43,7 +45,8 @@ pub async fn daily(
     let duration = chrono::offset::Utc::now().signed_duration_since(last_daily).num_seconds();
 
     if duration < 60*60*24 {
-        ctx.say(format!("Cooldown reached, you must wait {}s", 60*60*24 - duration)).await?;
+        let pretty_duration = humantime::format_duration(Duration::from_secs(60*60*24 - duration as u64));
+        ctx.say(format!("Cooldown reached, you must wait {}", pretty_duration)).await?;
     } else {
         ctx.say("You just won 1000").await?;
         sqlx::query!("UPDATE balances SET balance = balance + 1000 WHERE user_id = $1", user_id.to_string()).execute(conn).await?;
