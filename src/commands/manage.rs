@@ -1,7 +1,7 @@
 use std::{str::FromStr, path::PathBuf};
 use poise::serenity_prelude as serenity;
 use futures::{Stream, StreamExt};
-use sqlx::{Row, Pool, Postgres};
+use sqlx::{Pool, Postgres};
 use crate::{cards::card::{Rarity, Card, Type, FightCard}, Context, Error, create_card_embed, paginate_cards};
 
 
