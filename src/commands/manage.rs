@@ -329,7 +329,7 @@ pub async fn autocomplete_card_id<'a>(
 ) -> impl Stream<Item = String> + 'a {
     let conn = &ctx.data().0;
     let match_str = format!("%{}%", partial);
-    sqlx::query("SELECT id from cards WHERE id LIKE ?").bind(match_str).fetch(conn).map(|s| s.unwrap().try_get("id").unwrap())
+    sqlx::query!("SELECT cards.id FROM users_cards INNER JOIN cards ON users_cards.card_id = cards.id WHERE cards.id LIKE $1 GROUP BY card_id, cards.id", &match_str).fetch(conn).map(|s| s.unwrap().id)
 }
 
 pub async fn autocomplete_user_card_id<'a>(
@@ -338,5 +338,5 @@ pub async fn autocomplete_user_card_id<'a>(
 ) -> impl Stream<Item = String> + 'a {
     let conn = &ctx.data().0;
     let match_str = format!("%{}%", partial);
-    sqlx::query("SELECT cards.id FROM users_cards INNER JOIN cards ON users_cards.card_id = cards.id WHERE cards.id LIKE ? AND user_id=? GROUP BY card_id").bind(match_str).bind(ctx.author().id.0 as i64).fetch(conn).map(|s| s.unwrap().try_get("id").unwrap())
+    sqlx::query!("SELECT cards.id FROM users_cards INNER JOIN cards ON users_cards.card_id = cards.id WHERE cards.id LIKE $1 AND user_id=$2 GROUP BY card_id, cards.id", &match_str, ctx.author().id.0.to_string()).fetch(conn).map(|s| s.unwrap().id)
 }
