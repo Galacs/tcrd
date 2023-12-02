@@ -11,7 +11,7 @@ use serde::{Serialize, Deserialize};
 #[poise::command(
     prefix_command,
     slash_command,
-    subcommands("player", "accept", "queue")
+    subcommands("player", "accept", "queue", "cancel")
 )]
 pub async fn fight(_: Context<'_>) -> Result<(), Error> {
     Ok(())
@@ -188,6 +188,19 @@ pub async fn check_cards_ownership(ctx: &Context<'_>, conn: &Pool<Postgres>, car
     }
     Ok(true)
 }
+
+/// Removes you from the fights queue
+#[poise::command(slash_command, prefix_command)]
+async fn cancel(ctx: Context<'_>) -> Result<(), Error> {
+    let conn = &ctx.data().0;
+    if sqlx::query!("DELETE FROM fight_queue WHERE user_id=$1", ctx.author().id.0.to_string()).execute(conn).await?.rows_affected() == 0 {
+        ctx.say("You weren't in the queue").await?;
+    } else {
+        ctx.say("You were removed from the queue").await?;
+    }
+    Ok(())
+}
+
 
 // Uses postgres for storing fight request and redis for communication
 /// Chooses your card and joins the queue
