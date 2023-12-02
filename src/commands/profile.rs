@@ -1,7 +1,7 @@
 use crate::{Context, Error};
 
 
-/// Gets your stats
+/// Provides the user's statistics, containing their wins, losses, number of cards and current currency
 #[poise::command(slash_command, prefix_command)]
 pub async fn profile(
     ctx: Context<'_>,
