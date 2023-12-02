@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use futures::{TryStreamExt, StreamExt};
-use poise::serenity_prelude::User;
+use poise::serenity_prelude::{User, UserId};
 use rand::Rng;
 use redis::AsyncCommands;
 use sqlx::{Pool, Postgres};
@@ -189,6 +189,7 @@ pub async fn check_cards_ownership(ctx: &Context<'_>, conn: &Pool<Postgres>, car
     Ok(true)
 }
 
+// Uses postgres for storing fight request and redis for communication
 /// Chooses your card and joins the queue
 #[poise::command(slash_command, prefix_command)]
 async fn queue(
@@ -227,42 +228,55 @@ async fn queue(
     // Get redis connection
     let redis_client = &ctx.data().1;
     let mut redis = redis_client.get_async_connection().await?;
-    
-    let queue_len: usize = redis.llen("queue-fight-request").await?;
 
-    let mut player_b_cards = if queue_len < 1 {
-        let serialized = serde_json::to_string(&FightInfo {
-            author_id: ctx.author().id.0,
-            author_name: ctx.author().name.clone(),
-            author_channel_id: ctx.channel_id().0,
-            author_guild_id: ctx.guild_id().unwrap_or(poise::serenity_prelude::GuildId(0_u64)).into(),
-            cards: player_cards.clone()
-        })?;
-        redis.lpush("queue-fight-request", serialized).await?;
-        let mut pubsub = redis.into_pubsub();
-        pubsub.subscribe(format!("user-fight-response-{}", ctx.author().id.0)).await?;
-        ctx.say(format!("<@{}> joined the queue", ctx.author().id.0)).await?;
-        let msg: String = pubsub.on_message().next().await.unwrap().get_payload()?;
-        let player_b_cards: FightInfo = serde_json::from_str(&msg)?;
-        player_b_cards
-    } else {
-        let res: String = redis.rpop("queue-fight-request", None).await?;
-        let fight: FightInfo = serde_json::from_str(&res)?;
-        let serialized = serde_json::to_string(&FightInfo {
-            author_id: ctx.author().id.0,
-            author_name: ctx.author().name.clone(),
-            author_channel_id: ctx.channel_id().0,
-            author_guild_id: ctx.guild_id().unwrap_or(poise::serenity_prelude::GuildId(0_u64)).into(),
-            cards: player_cards.clone()
-        })?;
-        if fight.author_id == ctx.author().id.0 {
-            ctx.say("You can't join the queue two times, you were removed from the queue").await?;
-            return Ok(());
+    let fight = sqlx::query!("SELECT * FROM fight_queue ORDER BY join_timestamp").fetch_optional(conn).await?;
+
+    let mut player_b_cards = {
+        match fight {
+            None => {
+                let guild_id = ctx.guild_id().unwrap_or(poise::serenity_prelude::GuildId(0)).0 as i64;
+                let cards_id: Vec<String> = player_cards.iter().map(|x| x.id.to_owned()).collect();
+                sqlx::query!("INSERT INTO fight_queue(user_id, channel_id, guild_id, card_1, card_2, card_3, card_4, card_5) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+                ctx.author().id.0 as i64, ctx.channel_id().0 as i64, guild_id.to_string(), cards_id.get(0), cards_id.get(1), cards_id.get(2), cards_id.get(3), cards_id.get(4)).execute(conn).await?;
+
+                // Wait for other player
+                let mut pubsub = redis.into_pubsub();
+                pubsub.subscribe(format!("user-fight-response-{}", ctx.author().id.0)).await?;
+                ctx.say(format!("<@{}> joined the queue", ctx.author().id.0)).await?;
+                let msg: String = pubsub.on_message().next().await.unwrap().get_payload()?;
+                let player_b_cards: FightInfo = serde_json::from_str(&msg)?;
+                player_b_cards
+            },
+            Some(row) => {
+                if sqlx::query!("SELECT EXISTS(SELECT 1 AS a FROM fight_queue WHERE user_id=$1 LIMIT 1)", ctx.author().id.0.to_string()).fetch_one(conn).await?.exists.unwrap_or(false) {
+                    ctx.say("You can't join the queue two times").await?;
+                    return Ok(());
+                }
+
+                let user = UserId(row.user_id.parse()?).to_user(ctx).await?;
+                let cards = [Some(row.card_1), row.card_2, row.card_3, row.card_4, row.card_5].into_iter().flatten().map(|id| async move {
+                    let row = sqlx::query!("SELECT hp, damage, defense FROM cards WHERE id=$1", id).fetch_one(conn).await?;
+                    Ok::<FightCard, Error>(FightCard { id: id.to_owned(), hp: row.hp, damage: row.damage, defense: row.defense })
+                });
+                let cards: Vec<FightCard> = futures::future::join_all(cards).await.into_iter().flatten().collect();
+
+                // Delete queue entry from db
+                sqlx::query!("DELETE FROM fight_queue WHERE user_id=$1", row.user_id).execute(conn).await?;
+
+                let fight = FightInfo { author_id: row.user_id.parse()?, author_name: user.name, author_channel_id: row.channel_id.parse()?, author_guild_id: row.guild_id.parse()?, cards };
+                let serialized = serde_json::to_string(&FightInfo {
+                    author_id: ctx.author().id.0,
+                    author_name: ctx.author().name.clone(),
+                    author_channel_id: ctx.channel_id().0,
+                    author_guild_id: ctx.guild_id().unwrap_or(poise::serenity_prelude::GuildId(0_u64)).into(),
+                    cards: player_cards.clone()
+                })?;
+                // Publish reponse
+                redis.publish(format!("user-fight-response-{}",  fight.author_id), serialized).await?;
+                ctx.say(format!("Found a match against <@{}>", fight.author_id)).await?;
+                return Ok(());
+            }
         }
-        // Publish reponse
-        redis.publish(format!("user-fight-response-{}",  fight.author_id), serialized).await?;
-        ctx.say(format!("Found a match against <@{}>", fight.author_id)).await?;
-        return Ok(());
     };
 
     ctx.say(format!("A fight matching <@{}> against <@{}> will be played <#{}>", ctx.author().id.0, player_b_cards.author_id, player_b_cards.author_channel_id)).await?;
