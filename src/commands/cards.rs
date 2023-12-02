@@ -14,15 +14,23 @@ pub fn create_user_card_embed(e: &mut CreateEmbed, card: Card, user_card: UserCa
 
 /// Lists your own cards
 #[poise::command(prefix_command, slash_command)]
-pub async fn cards(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn cards(
+    ctx: Context<'_>,
+    #[description = "User you want to see the cards of"] player: Option<poise::serenity_prelude::User>,
+) -> Result<(), Error> {
     let conn = &ctx.data().0;
-    let user_id = ctx.author().id.0.to_string();
-    let rows = sqlx::query!("SELECT *,count(card_id) AS count FROM users_cards INNER JOIN cards ON users_cards.card_id = cards.id WHERE user_id=$1 GROUP BY card_id, user_id, id", user_id).fetch_all(conn).await?;
+    let user = player.unwrap_or(ctx.author().clone());
+    let user_id = user.id.0 as i64;
+    let username = match user.discriminator {
+        0000 => user.name,
+        _ => user.tag(),
+    };
+    let rows = sqlx::query!("SELECT *,count(card_id) AS count FROM users_cards INNER JOIN cards ON users_cards.card_id = cards.id WHERE user_id=$1 GROUP BY card_id, user_id, id", user_id.to_string()).fetch_all(conn).await?;
     if rows.is_empty() {
         ctx.say("Can't find any cards").await?;
         return Ok(());
     }
-    // ctx.say("the card was created").await?;
+
     let rows: Vec<(Card, UserCard)> = rows.iter().map(|row| {
         (Card {
             id: row.id.clone(),
@@ -38,6 +46,8 @@ pub async fn cards(ctx: Context<'_>) -> Result<(), Error> {
 
     let (cards, user_cards): (Vec<_>, Vec<_>) = rows.iter().cloned().unzip();
 
+    
+    ctx.say(format!("Here are {}'s cards", username)).await?;
     paginate_cards::paginate(ctx, cards, Some(user_cards)).await?;
     Ok(())
 }
