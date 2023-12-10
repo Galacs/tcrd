@@ -7,6 +7,7 @@ use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 
+use crate::commands::manage::give_card_to_user;
 use crate::paginate_cards;
 use crate::{Context, Error, commands::{manage::{autocomplete_user_card_id, check_card,}, fight::check_cards_ownership}, cards::card::{FightCard, Card, Rarity, Type}};
 
@@ -107,9 +108,7 @@ pub async fn request(
     ctx.say(format!("<@{}> accepted the trade request with the following cards", player.id)).await?;
 
     // Player B cards
-    paginate_cards::paginate(ctx, player_b_cards, None).await?;
-
-    println!("salut");
+    paginate_cards::paginate(ctx, player_b_cards.clone(), None).await?;
 
     ctx.send(|m| {
         m.content(format!("Do you want to accept a trade request from <@{}>", player.id)).components(|c| {
@@ -124,7 +123,7 @@ pub async fn request(
     })
     .await?;
 
-    while let Some(mci) = serenity::CollectComponentInteraction::new(ctx)
+    if let Some(mci) = serenity::CollectComponentInteraction::new(ctx)
         .author_id(ctx.author().id)
         .channel_id(ctx.channel_id())
         .timeout(std::time::Duration::from_secs(120))
@@ -137,13 +136,37 @@ pub async fn request(
         .await?;
     }
 
+    ctx.reply("Trading...").await?;
 
     // Trade logic goes here
+    let mut tx = conn.begin().await?;
+    for card in &player_cards {
+        if sqlx::query!("DELETE FROM users_cards WHERE ctid IN (SELECT ctid FROM users_cards WHERE card_id=$1 AND user_id=$2 LIMIT 1)", card.id, ctx.author().id.to_string()).execute(&mut *tx).await?.rows_affected() < 1 {
+            ctx.reply(format!("You don't have enough {}", card.id)).await?;
+            tx.rollback().await?;
+            return Ok(());
+        }
+        if !give_card_to_user(&mut tx, &card.id, player.id.0).await? {
+            ctx.reply(format!("You have already have 3 {}", card.id)).await?;
+            tx.rollback().await?;
+            return Ok(());
+        }
+    }
 
-    // let player_a_won = fight_two_players(&ctx, ctx.author().id.0, &mut player_cards, player.id.0, &mut player_b_cards).await?;
+    for card in &player_b_cards {
+        if sqlx::query!("DELETE FROM users_cards WHERE ctid IN (SELECT ctid FROM users_cards WHERE card_id=$1 AND user_id=$2 LIMIT 1)", card.id, player.id.to_string()).execute(&mut *tx).await?.rows_affected() < 1 {
+            ctx.reply(format!("You don't have enough {}", card.id)).await?;
+            tx.rollback().await?;
+            return Ok(());
+        }
+        if !give_card_to_user(&mut tx, &card.id, ctx.author().id.0).await? {
+            ctx.reply(format!("You have already have 3 {}", card.id)).await?;
+            tx.rollback().await?;
+            return Ok(());
+        }
+    }
 
-    // let user_a_id = ctx.author().id.0 as i64;
-    // let user_b_id = player.id.0 as i64;
+    tx.commit().await?;
     Ok(())
 }
 

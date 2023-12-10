@@ -1,7 +1,7 @@
 use std::{str::FromStr, path::PathBuf};
 use poise::serenity_prelude as serenity;
 use futures::{Stream, StreamExt};
-use sqlx::{Pool, Postgres};
+use sqlx::{Pool, Postgres, PgConnection};
 use crate::{cards::card::{Rarity, Card, Type, FightCard}, Context, Error, create_card_embed, paginate_cards};
 
 
@@ -243,15 +243,15 @@ async fn fight(
     Ok(())
 }
 
-pub async fn give_card_to_user(conn: &Pool<Postgres>, card_id: &String, user_id: u64) -> Result<bool, Error> {
+pub async fn give_card_to_user(conn: &mut PgConnection, card_id: &String, user_id: u64) -> Result<bool, Error> {
     let card_limit = 3;
     let user_id = user_id.to_string();
-    if let Ok(rows) = sqlx::query!("SELECT user_id FROM users_cards WHERE user_id=$1 AND card_id=$2", user_id, card_id).fetch_all(conn).await {
+    if let Ok(rows) = sqlx::query!("SELECT user_id FROM users_cards WHERE user_id=$1 AND card_id=$2", user_id, card_id).fetch_all(&mut *conn).await {
         if rows.len() >= card_limit {
             return Ok(false)
         }
     }
-    sqlx::query!("INSERT INTO users_cards(user_id, card_id) VALUES ($1, $2)", user_id, card_id).execute(conn).await?;
+    sqlx::query!("INSERT INTO users_cards(user_id, card_id) VALUES ($1, $2)", user_id, card_id).execute(&mut *conn).await?;
     Ok(true)
 }
 
@@ -274,10 +274,12 @@ pub async fn give(
         return Ok(());
     };
 
-    if !give_card_to_user(conn, &row.id, user.id.0).await? {
+    let mut co = conn.acquire().await?;
+    if !give_card_to_user(&mut co, &row.id, user.id.0).await? {
         ctx.say("Number of cards exceeded").await?;
         return Ok(());
     }
+    co.close().await?;
 
     let card = Card {
         id: row.id.clone(),

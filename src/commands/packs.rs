@@ -70,7 +70,8 @@ pub async fn pack(
         })
     }).await?;
 
-    if !give_card_to_user(conn, &card.id, ctx.author().id.0).await? {
+    let mut co = conn.acquire().await?;
+    if !give_card_to_user(&mut co, &card.id, ctx.author().id.0).await? {
         ctx.reply("The card wasn't added to your collection as your already have three of them").await?;
     }
 
