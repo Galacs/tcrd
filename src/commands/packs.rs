@@ -4,6 +4,22 @@ use crate::{Context, Error, cards::card::{Rarity, Card, Type}, commands::manage:
 use rand::Rng;
 use sqlx::{Postgres, Pool};
 
+async fn get_random_card(conn: &Pool<Postgres>, rarity: Rarity) -> Result<Card, Error> {
+    let rarity_str = rarity.to_string();
+    let row = sqlx::query!("SELECT * from cards WHERE rarity=$1 ORDER BY RANDOM() LIMIT 1", rarity_str).fetch_one(conn).await?;
+    let card = Card {
+        id: row.id,
+        extension: row.image_extension,
+        rarity: Rarity::from_str(&row.rarity).unwrap(),
+        kind: Type::from_str(&row.kind).unwrap(),
+        description: row.description,
+        hp: row.hp,
+        damage: row.damage,
+        defense: row.defense,
+    };
+    Ok(card)
+}
+
 /// Buys a pack for 1000 Belly
 #[poise::command(slash_command, prefix_command)]
 pub async fn pack(
@@ -27,22 +43,6 @@ pub async fn pack(
     let pack = sqlx::query!("SELECT common_chance, rare_chance, epic_chance, legendary_chance, mythic_chance, awakened_chance FROM packs").fetch_one(conn).await?;
     
     let number = rand::thread_rng().gen_range(0..1000);
-
-    async fn get_random_card(conn: &Pool<Postgres>, rarity: Rarity) -> Result<Card, Error> {
-        let rarity_str = rarity.to_string();
-        let row = sqlx::query!("SELECT * from cards WHERE rarity=$1 ORDER BY RANDOM() LIMIT 1", rarity_str).fetch_one(conn).await?;
-        let card = Card {
-            id: row.id,
-            extension: row.image_extension,
-            rarity: Rarity::from_str(&row.rarity).unwrap(),
-            kind: Type::from_str(&row.kind).unwrap(),
-            description: row.description,
-            hp: row.hp,
-            damage: row.damage,
-            defense: row.defense,
-        };
-        Ok(card)
-    }
 
     let card = if (pack.awakened_chance..=pack.mythic_chance).contains(&number) {
         ctx.say("Congratulations you won an Awakened card").await?;
