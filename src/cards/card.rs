@@ -7,6 +7,7 @@ pub struct Card {
     pub rarity: Rarity,
     pub kind: Type,
     pub description: String,
+    pub obtainable: bool,
     // Card stats
     pub hp: i64,
     pub damage: i64,

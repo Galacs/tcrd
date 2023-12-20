@@ -41,6 +41,7 @@ pub async fn cards(
             hp: row.hp,
             damage: row.damage,
             defense: row.defense,
+            obtainable: row.obtainable,
         }, UserCard { count: row.count.ok_or("no count").unwrap() })
     }).collect();
 

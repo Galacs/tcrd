@@ -25,8 +25,9 @@ pub fn create_card_embed(e: &mut CreateEmbed, card: Card) -> &mut CreateEmbed {
         **Type:** {}
         **HP:** {}
         **Damage:** {}
-        **Defense:** {}",
-        card.id, card.rarity, card.kind, card.hp, card.damage, card.defense
+        **Defense:** {}
+        **Obtainable:** {}",
+        card.id, card.rarity, card.kind, card.hp, card.damage, card.defense, card.obtainable,
     ), false)
     .field("**Description**", card.description, false)
     .image(image_url)

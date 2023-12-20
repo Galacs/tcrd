@@ -6,7 +6,7 @@ use sqlx::{Postgres, Pool};
 
 async fn get_random_card(conn: &Pool<Postgres>, rarity: Rarity) -> Result<Card, Error> {
     let rarity_str = rarity.to_string();
-    let row = sqlx::query!("SELECT * from cards WHERE rarity=$1 ORDER BY RANDOM() LIMIT 1", rarity_str).fetch_one(conn).await?;
+    let row = sqlx::query!("SELECT * from cards WHERE rarity=$1 AND obtainable=true ORDER BY RANDOM() LIMIT 1", rarity_str).fetch_one(conn).await?;
     let card = Card {
         id: row.id,
         extension: row.image_extension,
@@ -16,6 +16,7 @@ async fn get_random_card(conn: &Pool<Postgres>, rarity: Rarity) -> Result<Card, 
         hp: row.hp,
         damage: row.damage,
         defense: row.defense,
+        obtainable: row.obtainable,
     };
     Ok(card)
 }

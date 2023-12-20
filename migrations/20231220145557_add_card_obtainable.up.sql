@@ -1,0 +1,1 @@
+ALTER TABLE cards ADD obtainable BOOLEAN NOT NULL DEFAULT true;

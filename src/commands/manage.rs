@@ -76,11 +76,12 @@ async fn create(
     #[description = "Damage"] damage: i64,
     #[description = "Defense in %"] defense: i64,
     #[description = "Image"] image: serenity::Attachment,
+    #[description = "Obtainable ?"] obtainable: Option<bool>,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
     let filepath = PathBuf::from_str(&image.filename)?;
     let extension = filepath.extension().ok_or("file extension error")?.to_str().ok_or("file extension error")?;
-    if (sqlx::query!("INSERT INTO cards(id, image_extension, rarity, kind, description, hp, damage, defense) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)", id, extension, rarity.to_string(), kind.to_string(), description, hp, damage, defense).execute(conn).await).is_err() {
+    if (sqlx::query!("INSERT INTO cards(id, image_extension, rarity, kind, description, hp, damage, defense, obtainable) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)", id, extension, rarity.to_string(), kind.to_string(), description, hp, damage, defense, obtainable.unwrap_or(true)).execute(conn).await).is_err() {
         ctx.say("A similar card already exists").await?;
         return Ok(());
     }
@@ -91,7 +92,7 @@ async fn create(
     bucket.put_object_stream(&mut cursor, format!("{}.{}", &id, &extension)).await?;
 
     ctx.say("the card was created").await?;
-    let card = Card { id, extension: extension.to_owned(), rarity, kind, description, hp, damage, defense };
+    let card = Card { id, extension: extension.to_owned(), rarity, kind, description, hp, damage, defense, obtainable: obtainable.unwrap_or(true) };
     ctx.send(|b| b.embed(|e| create_card_embed(e, card))).await?;
     Ok(())
 }
@@ -118,6 +119,7 @@ pub async fn list(
             hp: row.hp,
             damage: row.damage,
             defense: row.defense,
+            obtainable: row.obtainable
         }
     }).collect();
     paginate_cards::paginate(ctx, cards, None).await?;
@@ -167,6 +169,7 @@ async fn get(
         hp: row.hp,
         damage: row.damage,
         defense: row.defense,
+        obtainable: row.obtainable
     };
     ctx.send(|b| {
         b.embed(|e| {
@@ -290,6 +293,7 @@ pub async fn give(
         hp: row.hp,
         damage: row.damage,
         defense: row.defense,
+        obtainable: row.obtainable,
     };
     ctx.send(|b| {
         b.embed(|e| {

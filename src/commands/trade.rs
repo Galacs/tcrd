@@ -31,6 +31,7 @@ pub async fn id_to_card(conn: &Pool<Postgres>, card_id: &String) -> Result<Card,
         rarity: Rarity::from_str(&row.rarity).unwrap(),
         kind: Type::from_str(&row.kind).unwrap(),
         description: row.description,
+        obtainable: row.obtainable
     })
 }
 
