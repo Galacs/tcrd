@@ -106,7 +106,7 @@ pub async fn eventpack(
 
     let card = if (pack.event_chance as i64..=pack.epic_chance).contains(&number) {
         ctx.say("Congratulations you won an Event card").await?;
-        get_random_card(conn, Rarity::Legendary).await?
+        get_random_card(conn, Rarity::Event).await?
     } else if (pack.epic_chance..=pack.rare_chance).contains(&number) {
         ctx.say("Congratulations you won a Epic card").await?;
         get_random_card(conn, Rarity::Epic).await?
