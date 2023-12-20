@@ -1,0 +1,1 @@
+ALTER TABLE packs ADD event_chance INTEGER DEFAULT 0 NOT NULL;

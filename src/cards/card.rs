@@ -42,6 +42,7 @@ pub enum Rarity {
     Mythic,
     Awakened,
     PirateKing,
+    Event,
 }
 
 #[derive(Clone, Debug, poise::ChoiceParameter, sqlx::Type, Serialize, Deserialize,)]
