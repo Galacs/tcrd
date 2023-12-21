@@ -20,8 +20,16 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: tcrd
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: tcrd
+        ports:
+          - 5432:5432
     permissions:
       contents: read
       packages: write
@@ -70,6 +78,8 @@ jobs:
       - name: Build and push Docker image
         id: build-and-push
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
+        env:
+          DATABASE_URL: postgres://tcrd:password@postgres/tcrd
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
