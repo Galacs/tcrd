@@ -27,7 +27,7 @@ pub async fn pack(
     ctx: Context<'_>,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
-    let user_id = ctx.author().id.0 as i64;
+    let user_id = ctx.author().id.0 as i32;
     crate::create_user::exists_or_create_user(user_id, conn).await?;
     let user_id = user_id.to_string();
     let Ok(row) = sqlx::query!("SELECT balance FROM balances WHERE user_id = $1", user_id).fetch_one(conn).await else {
@@ -86,7 +86,7 @@ pub async fn eventpack(
     ctx: Context<'_>,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
-    let user_id = ctx.author().id.0 as i64;
+    let user_id = ctx.author().id.0 as i32;
     crate::create_user::exists_or_create_user(user_id, conn).await?;
     let user_id = user_id.to_string();
     let Ok(row) = sqlx::query!("SELECT balance FROM balances WHERE user_id = $1", user_id).fetch_one(conn).await else {
@@ -104,7 +104,7 @@ pub async fn eventpack(
     
     let number = rand::thread_rng().gen_range(0..1000);
 
-    let card = if (pack.event_chance as i64..=pack.epic_chance).contains(&number) {
+    let card = if (pack.event_chance as i32..=pack.epic_chance).contains(&number) {
         ctx.say("Congratulations you won an Event card").await?;
         get_random_card(conn, Rarity::Event).await?
     } else if (pack.epic_chance..=pack.rare_chance).contains(&number) {

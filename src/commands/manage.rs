@@ -25,7 +25,7 @@ pub async fn balance(_: Context<'_>) -> Result<(), Error> {
 #[poise::command(slash_command, prefix_command)]
 async fn add(
     ctx: Context<'_>,
-    #[description = "Amount"] amount: i64,
+    #[description = "Amount"] amount: i32,
     #[description = "User"] user: Option<serenity::User>,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
@@ -39,7 +39,7 @@ async fn add(
 #[poise::command(slash_command, prefix_command)]
 async fn set(
     ctx: Context<'_>,
-    #[description = "amount"] amount: i64,
+    #[description = "amount"] amount: i32,
     #[description = "User"] user: Option<serenity::User>,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
@@ -72,9 +72,9 @@ async fn create(
     #[description = "Rarity"] rarity: Rarity,
     #[description = "Type"] kind: Type,
     #[description = "Description"] description: String,
-    #[description = "HP"] hp: i64,
-    #[description = "Damage"] damage: i64,
-    #[description = "Defense in %"] defense: i64,
+    #[description = "HP"] hp: i32,
+    #[description = "Damage"] damage: i32,
+    #[description = "Defense in %"] defense: i32,
     #[description = "Image"] image: serenity::Attachment,
     #[description = "Obtainable ?"] obtainable: Option<bool>,
 ) -> Result<(), Error> {

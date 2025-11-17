@@ -9,7 +9,7 @@ pub async fn profile(
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
     let user = player.unwrap_or(ctx.author().clone());
-    let user_id = user.id.0 as i64;
+    let user_id = user.id.0 as i32;
     let username = match user.discriminator {
         0000 => user.name,
         _ => user.tag(),

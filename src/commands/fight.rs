@@ -247,10 +247,10 @@ async fn queue(
     let mut player_b_cards = {
         match fight {
             None => {
-                let guild_id = ctx.guild_id().unwrap_or(poise::serenity_prelude::GuildId(0)).0 as i64;
+                let guild_id = ctx.guild_id().unwrap_or(poise::serenity_prelude::GuildId(0)).0 as i32;
                 let cards_id: Vec<String> = player_cards.iter().map(|x| x.id.to_owned()).collect();
                 sqlx::query!("INSERT INTO fight_queue(user_id, channel_id, guild_id, card_1, card_2, card_3, card_4, card_5) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-                ctx.author().id.0 as i64, ctx.channel_id().0 as i64, guild_id.to_string(), cards_id.get(0), cards_id.get(1), cards_id.get(2), cards_id.get(3), cards_id.get(4)).execute(conn).await?;
+                ctx.author().id.0 as i32, ctx.channel_id().0 as i32, guild_id.to_string(), cards_id.get(0), cards_id.get(1), cards_id.get(2), cards_id.get(3), cards_id.get(4)).execute(conn).await?;
 
                 // Wait for other player
                 let mut pubsub = redis.into_pubsub();
