@@ -1,15 +1,22 @@
 use std::str::FromStr;
 
 use futures::StreamExt;
-use poise::serenity_prelude::User;
 use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::User;
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Postgres};
 
 use crate::commands::manage::give_card_to_user;
 use crate::paginate_cards;
-use crate::{Context, Error, commands::{manage::{autocomplete_user_card_id, check_card,}, fight::check_cards_ownership}, cards::card::{FightCard, Card, Rarity, Type}};
+use crate::{
+    cards::card::{Card, FightCard, Rarity, Type},
+    commands::{
+        fight::check_cards_ownership,
+        manage::{autocomplete_user_card_id, check_card},
+    },
+    Context, Error,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct TradeInfo {
@@ -21,8 +28,10 @@ struct TradeInfo {
 }
 
 pub async fn id_to_card(conn: &Pool<Postgres>, card_id: &String) -> Result<Card, Error> {
-    let row = sqlx::query!("SELECT * FROM cards WHERE id=$1", card_id).fetch_one(conn).await?;
-    Ok( Card {
+    let row = sqlx::query!("SELECT * FROM cards WHERE id=$1", card_id)
+        .fetch_one(conn)
+        .await?;
+    Ok(Card {
         id: row.id,
         hp: row.hp,
         defense: row.defense,
@@ -31,15 +40,11 @@ pub async fn id_to_card(conn: &Pool<Postgres>, card_id: &String) -> Result<Card,
         rarity: Rarity::from_str(&row.rarity).unwrap(),
         kind: Type::from_str(&row.kind).unwrap(),
         description: row.description,
-        obtainable: row.obtainable
+        obtainable: row.obtainable,
     })
 }
 
-#[poise::command(
-    prefix_command,
-    slash_command,
-    subcommands("request", "accept")
-)]
+#[poise::command(prefix_command, slash_command, subcommands("request", "accept"))]
 pub async fn trade(_: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
@@ -49,11 +54,21 @@ pub async fn trade(_: Context<'_>) -> Result<(), Error> {
 pub async fn request(
     ctx: Context<'_>,
     #[description = "Player you want to trade with"] player: User,
-    #[description = "Card 1"] #[autocomplete = "autocomplete_user_card_id"] card_1: String,
-    #[description = "Card 2"] #[autocomplete = "autocomplete_user_card_id"] card_2: Option<String>,
-    #[description = "Card 3"] #[autocomplete = "autocomplete_user_card_id"] card_3: Option<String>,
-    #[description = "Card 4"] #[autocomplete = "autocomplete_user_card_id"] card_4: Option<String>,
-    #[description = "Card 5"] #[autocomplete = "autocomplete_user_card_id"] card_5: Option<String>,
+    #[description = "Card 1"]
+    #[autocomplete = "autocomplete_user_card_id"]
+    card_1: String,
+    #[description = "Card 2"]
+    #[autocomplete = "autocomplete_user_card_id"]
+    card_2: Option<String>,
+    #[description = "Card 3"]
+    #[autocomplete = "autocomplete_user_card_id"]
+    card_3: Option<String>,
+    #[description = "Card 4"]
+    #[autocomplete = "autocomplete_user_card_id"]
+    card_4: Option<String>,
+    #[description = "Card 5"]
+    #[autocomplete = "autocomplete_user_card_id"]
+    card_5: Option<String>,
 ) -> Result<(), Error> {
     if &player == ctx.author() {
         ctx.say("You can't trade with yourself").await?;
@@ -68,7 +83,7 @@ pub async fn request(
         };
         if !check_card(conn, id).await? {
             ctx.say(format!("{} card doesn't exist", id)).await?;
-            return Ok(())
+            return Ok(());
         }
     }
 
@@ -83,36 +98,60 @@ pub async fn request(
 
     // Check if the player owns all the cards
     if !check_cards_ownership(&ctx, conn, player_fight_cards.clone()).await? {
-        return Ok(())
+        return Ok(());
     }
 
     // Get redis connection
     let redis_client = &ctx.data().1;
-    let mut redis = redis_client.get_async_connection().await?;
+    let mut redis = redis_client.get_multiplexed_async_connection().await?;
     let serialized = serde_json::to_string(&TradeInfo {
         author_id: ctx.author().id.0,
         author_name: ctx.author().name.clone(),
         author_channel_id: ctx.channel_id().0,
-        author_guild_id: ctx.guild_id().unwrap_or(poise::serenity_prelude::GuildId(0_u64)).into(),
-        cards: player_cards.clone()
+        author_guild_id: ctx
+            .guild_id()
+            .unwrap_or(poise::serenity_prelude::GuildId(0_u64))
+            .into(),
+        cards: player_cards.clone(),
     })?;
 
-    redis.lpush(format!("user-trade-request-{}-{}", ctx.author().id.0, player.id.0), serialized).await?;
-    let mut pubsub = redis.into_pubsub();
-    pubsub.subscribe(format!("user-trade-response-{}-{}", ctx.author().id.0, player.id.0)).await?;
-    ctx.say(format!("trade request sent to <@{}>", player.id)).await?;
+    redis
+        .lpush(
+            format!("user-trade-request-{}-{}", ctx.author().id.0, player.id.0),
+            serialized,
+        )
+        .await?;
+    // let mut pubsub = redis.into_pubsub();
+    let mut pubsub = redis_client.get_async_pubsub().await?;
+    pubsub
+        .subscribe(format!(
+            "user-trade-response-{}-{}",
+            ctx.author().id.0,
+            player.id.0
+        ))
+        .await?;
+    ctx.say(format!("trade request sent to <@{}>", player.id))
+        .await?;
 
     let msg: String = pubsub.on_message().next().await.unwrap().get_payload()?;
 
     let player_b_cards: Vec<Card> = serde_json::from_str(&msg)?;
 
-    ctx.say(format!("<@{}> accepted the trade request with the following cards", player.id)).await?;
+    ctx.say(format!(
+        "<@{}> accepted the trade request with the following cards",
+        player.id
+    ))
+    .await?;
 
     // Player B cards
     paginate_cards::paginate(ctx, player_b_cards.clone(), None).await?;
 
     ctx.send(|m| {
-        m.content(format!("Do you want to accept a trade request from <@{}>", player.id)).components(|c| {
+        m.content(format!(
+            "Do you want to accept a trade request from <@{}>",
+            player.id
+        ))
+        .components(|c| {
             c.create_action_row(|ar| {
                 ar.create_button(|b| {
                     b.style(serenity::ButtonStyle::Primary)
@@ -148,7 +187,8 @@ pub async fn request(
             return Ok(());
         }
         if !give_card_to_user(&mut tx, &card.id, player.id.0).await? {
-            ctx.reply(format!("You have already have 3 {}", card.id)).await?;
+            ctx.reply(format!("You have already have 3 {}", card.id))
+                .await?;
             tx.rollback().await?;
             return Ok(());
         }
@@ -161,7 +201,8 @@ pub async fn request(
             return Ok(());
         }
         if !give_card_to_user(&mut tx, &card.id, ctx.author().id.0).await? {
-            ctx.reply(format!("You have already have 3 {}", card.id)).await?;
+            ctx.reply(format!("You have already have 3 {}", card.id))
+                .await?;
             tx.rollback().await?;
             return Ok(());
         }
@@ -171,17 +212,26 @@ pub async fn request(
     Ok(())
 }
 
-
 /// Accepts a trade request from another player
 #[poise::command(slash_command, prefix_command)]
 async fn accept(
     ctx: Context<'_>,
     #[description = "Player that sent the request"] player: User,
-    #[description = "Card 1"] #[autocomplete = "autocomplete_user_card_id"] card_1: String,
-    #[description = "Card 2"] #[autocomplete = "autocomplete_user_card_id"] card_2: Option<String>,
-    #[description = "Card 3"] #[autocomplete = "autocomplete_user_card_id"] card_3: Option<String>,
-    #[description = "Card 4"] #[autocomplete = "autocomplete_user_card_id"] card_4: Option<String>,
-    #[description = "Card 5"] #[autocomplete = "autocomplete_user_card_id"] card_5: Option<String>,
+    #[description = "Card 1"]
+    #[autocomplete = "autocomplete_user_card_id"]
+    card_1: String,
+    #[description = "Card 2"]
+    #[autocomplete = "autocomplete_user_card_id"]
+    card_2: Option<String>,
+    #[description = "Card 3"]
+    #[autocomplete = "autocomplete_user_card_id"]
+    card_3: Option<String>,
+    #[description = "Card 4"]
+    #[autocomplete = "autocomplete_user_card_id"]
+    card_4: Option<String>,
+    #[description = "Card 5"]
+    #[autocomplete = "autocomplete_user_card_id"]
+    card_5: Option<String>,
 ) -> Result<(), Error> {
     let conn = &ctx.data().0;
     // Check if cards are valid
@@ -192,7 +242,7 @@ async fn accept(
         };
         if !check_card(conn, id).await? {
             ctx.say(format!("{} card doesn't exist", id)).await?;
-            return Ok(())
+            return Ok(());
         }
     }
 
@@ -207,21 +257,36 @@ async fn accept(
 
     // Check if the player owns all the cards
     if !check_cards_ownership(&ctx, conn, player_fight_cards).await? {
-        return Ok(())
+        return Ok(());
     }
 
     // Get redis connection
     let redis_client = &ctx.data().1;
-    let mut redis = redis_client.get_async_connection().await?;
+    let mut redis = redis_client.get_multiplexed_async_connection().await?;
 
-    let res: String = redis.rpop(format!("user-trade-request-{}-{}", player.id.0, ctx.author().id.0), None).await?;
+    let res: String = redis
+        .rpop(
+            format!("user-trade-request-{}-{}", player.id.0, ctx.author().id.0),
+            None,
+        )
+        .await?;
 
     let trade: TradeInfo = serde_json::from_str(&res)?;
 
     let serialized = serde_json::to_string(&player_cards)?;
     // Publish reponse
-    redis.publish(format!("user-trade-response-{}-{}",  player.id.0, ctx.author().id.0), serialized).await?;
+    redis
+        .publish(
+            format!("user-trade-response-{}-{}", player.id.0, ctx.author().id.0),
+            serialized,
+        )
+        .await?;
 
-    ctx.say(format!("trade request from <@{}> accepted", trade.author_id)).await?;
+    ctx.say(format!(
+        "trade request from <@{}> accepted",
+        trade.author_id
+    ))
+    .await?;
     Ok(())
 }
+

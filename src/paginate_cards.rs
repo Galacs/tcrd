@@ -1,6 +1,10 @@
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity, CreateEmbed, CreateInteractionResponseMessage};
 
-use crate::{cards::card::{Card, UserCard}, create_card_embed, commands::cards::create_user_card_embed};
+use crate::{
+    cards::card::{Card, UserCard},
+    commands::cards::create_user_card_embed,
+    create_card_embed,
+};
 
 pub async fn paginate<U, E>(
     ctx: poise::Context<'_, U, E>,
@@ -18,23 +22,29 @@ pub async fn paginate<U, E>(
     // Send the embed with the first page as content
     let mut current_page = 0;
     ctx.send(|b| {
-        b.embed(|b| {
-            match &user_cards {
-                Some(user_card) => create_user_card_embed(b, cards[current_page].clone(), user_card[current_page].clone()).footer(|f| f.text(footer_count)),
-                None => create_card_embed(b, cards[current_page].clone()).footer(|f| f.text(footer_count)),
+        b.embed(|b| match &user_cards {
+            Some(user_card) => create_user_card_embed(
+                b,
+                cards[current_page].clone(),
+                user_card[current_page].clone(),
+            )
+            .footer(|f| f.text(footer_count)),
+            None => {
+                create_card_embed(b, cards[current_page].clone()).footer(|f| f.text(footer_count))
             }
-        }).components(|b| {
-                b.create_action_row(|b| {
-                    b.create_button(|b| b.custom_id(&prev_button_id).emoji('◀'))
-                        .create_button(|b| b.custom_id(&next_button_id).emoji('▶'))
-                        .create_button(|b| b.custom_id(&close_button_id).emoji('❌'))
-                })
+        })
+        .components(|b| {
+            b.create_action_row(|b| {
+                b.create_button(|b| b.custom_id(&prev_button_id).emoji('◀'))
+                    .create_button(|b| b.custom_id(&next_button_id).emoji('▶'))
+                    .create_button(|b| b.custom_id(&close_button_id).emoji('❌'))
             })
+        })
     })
     .await?;
 
     // Loop through incoming interactions with the navigation buttons
-    while let Some(press) = serenity::CollectComponentInteraction::new(ctx)
+    while let Some(press) = serenity::ComponentInteractionCollector::new(ctx)
         // We defined our button IDs to start with `ctx_id`. If they don't, some other command's
         // button was pressed
         .filter(move |press| press.data.custom_id.starts_with(&ctx_id.to_string()))
@@ -60,19 +70,33 @@ pub async fn paginate<U, E>(
 
         let footer_count = format!("{}/{}", current_page + 1, cards.len());
 
+        press.create_response(
+            ctx,
+            serenity::CreateInteractionResponse::UpdateMessage(
+                CreateInteractionResponseMessage::new().embed(CreateEmbed::default()),
+            ),
+        );
+
         // Update the message with the new page contents
         press
-            .create_interaction_response(ctx, |b| {
+            .create_response(ctx, |b| {
                 b.kind(serenity::InteractionResponseType::UpdateMessage)
-                    .interaction_response_data(|b| b.embed(|b| {
-                        match &user_cards {
-                            Some(user_card) => create_user_card_embed(b, cards[current_page].clone(), user_card[current_page].clone()).footer(|f| f.text(footer_count)),
-                            None => create_card_embed(b, cards[current_page].clone()).footer(|f| f.text(footer_count)),
-                        }
-                    }))
+                    .interaction_response_data(|b| {
+                        b.embed(|b| match &user_cards {
+                            Some(user_card) => create_user_card_embed(
+                                b,
+                                cards[current_page].clone(),
+                                user_card[current_page].clone(),
+                            )
+                            .footer(|f| f.text(footer_count)),
+                            None => create_card_embed(b, cards[current_page].clone())
+                                .footer(|f| f.text(footer_count)),
+                        })
+                    })
             })
             .await?;
     }
 
     Ok(())
 }
+
