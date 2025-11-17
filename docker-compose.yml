@@ -35,9 +35,9 @@ services:
       - '9001:9001'
 
   postgres:
-    image: postgres
+    image: postgres:18
     volumes:
-      - postgres_storage:/var/lib/postgresql/data
+      - postgres_storage:/var/lib/postgresql/18/data
     environment:
       POSTGRES_DB: tcrd
       POSTGRES_USER: tcrd
